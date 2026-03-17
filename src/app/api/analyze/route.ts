@@ -1,0 +1,375 @@
+import { MODELS, callNemotronWithMessages } from "@/lib/nim-client";
+import { CLASSIFIER_SYSTEM_PROMPT, CLASSIFIER_TOOLS } from "@/lib/agents/classifier";
+import { SYNTHESIZER_SYSTEM_PROMPT } from "@/lib/agents/synthesizer";
+import { sicLookup } from "@/lib/tools/sic-lookup";
+import { waterwayCheck } from "@/lib/tools/waterway-check";
+import { schoolProximityCheck } from "@/lib/tools/school-proximity";
+import { ceqaExemptionCheck } from "@/lib/tools/ceqa-exemption-check";
+import { thresholdCheck } from "@/lib/tools/threshold-check";
+import { dependencyLookup } from "@/lib/tools/timeline-calculator";
+import { AgentEvent } from "@/lib/types";
+import { REGULATIONS_KNOWLEDGE_BASE } from "@/lib/regulations";
+import OpenAI from "openai";
+
+// ── Tool executor ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function executeToolLocally(toolName: string, args: Record<string, unknown>): unknown {
+  const a = args as any;
+  switch (toolName) {
+    case "sic_lookup":
+      return sicLookup(a);
+    case "waterway_proximity_check":
+      return waterwayCheck(a);
+    case "school_proximity_check":
+      return schoolProximityCheck(a);
+    case "ceqa_exemption_check":
+      return ceqaExemptionCheck(a);
+    case "threshold_check":
+      return thresholdCheck(a);
+    case "dependency_lookup":
+      return dependencyLookup(a);
+    default:
+      return { error: `Unknown tool: ${toolName}` };
+  }
+}
+
+// ── JSON extractor ──
+function extractJSON(text: string): unknown | null {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    try {
+      return JSON.parse(
+        jsonMatch[0].replace(/,\s*}/g, "}").replace(/,\s*]/g, "]")
+      );
+    } catch {
+      return null;
+    }
+  }
+}
+
+// ── Agent loop with tool calling (used for classifier) ──
+async function runAgentLoop(
+  model: keyof typeof MODELS,
+  systemPrompt: string,
+  userMessage: string,
+  tools: OpenAI.ChatCompletionTool[],
+  agentName: string,
+  send: (event: AgentEvent) => void,
+  maxIterations: number = 5
+): Promise<unknown> {
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage },
+  ];
+
+  for (let i = 0; i < maxIterations; i++) {
+    const response = await callNemotronWithMessages(model, messages, {
+      tools,
+      maxTokens: 2048,
+    });
+
+    const choice = response.choices[0];
+
+    if (choice.message.content) {
+      send({ type: "thought", agent: agentName, content: choice.message.content });
+    }
+
+    if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
+      messages.push({
+        role: "assistant",
+        content: choice.message.content || null,
+        tool_calls: choice.message.tool_calls,
+      } as OpenAI.ChatCompletionMessageParam);
+
+      for (const toolCall of choice.message.tool_calls) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const tc = toolCall as any;
+        const fnName: string = tc.function?.name ?? tc.name ?? "unknown";
+        const fnArgs: string = tc.function?.arguments ?? JSON.stringify(tc.input ?? {});
+        let parsedArgs: Record<string, unknown>;
+        try {
+          parsedArgs = JSON.parse(fnArgs);
+        } catch {
+          parsedArgs = { raw: fnArgs };
+        }
+
+        send({ type: "tool_call", agent: agentName, tool: fnName, input: parsedArgs });
+
+        const toolResult = executeToolLocally(fnName, parsedArgs);
+
+        send({ type: "tool_result", agent: agentName, tool: fnName, output: toolResult as Record<string, unknown> });
+
+        messages.push({
+          role: "tool",
+          tool_call_id: tc.id,
+          content: JSON.stringify(toolResult),
+        });
+      }
+      continue;
+    }
+
+    // Final answer
+    return extractJSON(choice.message.content || "") || choice.message.content;
+  }
+
+  // Force final answer
+  messages.push({ role: "user", content: "Provide your final JSON answer now." });
+  const finalResponse = await callNemotronWithMessages(model, messages, { maxTokens: 2048 });
+  const content = finalResponse.choices[0].message.content || "";
+  if (content) send({ type: "thought", agent: agentName, content });
+  return extractJSON(content) || content;
+}
+
+// ── Pre-compute all tool results after classification (eliminates Agent 2 tool-call round-trips) ──
+function preComputeToolResults(classification: Record<string, unknown>) {
+  const c = (classification as { classification?: Record<string, unknown> })?.classification || classification;
+  const sicCode = (c.sic_code as string) || "9999";
+  const acres = (c.estimated_disturbance_acres as number) || 0;
+  const nearWaterway = (c.near_waterway as boolean) || false;
+  const involvesHazmat = (c.involves_hazmat as boolean) || false;
+
+  return {
+    scaqmd_air: thresholdCheck({ agency: "SCAQMD", check_type: "air_permit", sic_code: sicCode, has_emissions_equipment: true }),
+    scaqmd_dust: thresholdCheck({ agency: "SCAQMD", check_type: "fugitive_dust", disturbance_acres: acres }),
+    scaqmd_tac: thresholdCheck({ agency: "SCAQMD", check_type: "toxic_air_contaminant", sic_code: sicCode }),
+    rwqcb_igp: thresholdCheck({ agency: "RWQCB", check_type: "industrial_stormwater", sic_code: sicCode }),
+    rwqcb_cgp: thresholdCheck({ agency: "RWQCB", check_type: "construction_stormwater", disturbance_acres: acres }),
+    sanitation: thresholdCheck({ agency: "Sanitation", check_type: "wastewater_discharge", sic_code: sicCode, discharges_to_sewer: true }),
+    cdfw: thresholdCheck({ agency: "CDFW", check_type: "streambed_alteration", near_waterway: nearWaterway }),
+    usace: thresholdCheck({ agency: "USACE", check_type: "section_404", near_waterway: nearWaterway }),
+    fire_hazmat: thresholdCheck({ agency: "Fire_CUPA", check_type: "hazmat_storage", stores_hazmat: involvesHazmat }),
+    fire_hazwaste: thresholdCheck({ agency: "Fire_CUPA", check_type: "hazwaste_generator", stores_hazmat: involvesHazmat }),
+    ceqa: ceqaExemptionCheck({
+      project_type: (c.sic_description as string) || "",
+      is_new_construction: true,
+      in_urbanized_area: true,
+      near_sensitive_environment: nearWaterway,
+    }),
+  };
+}
+
+// ── Per-agency prompt (for parallel analysis) ──
+const AGENCY_GROUPS = [
+  {
+    name: "Air & Water",
+    agencies: ["South Coast AQMD (SCAQMD)", "LA RWQCB Region 4 (RWQCB)"],
+    toolKeys: ["scaqmd_air", "scaqmd_dust", "scaqmd_tac", "rwqcb_igp", "rwqcb_cgp"],
+  },
+  {
+    name: "Sanitation & CEQA",
+    agencies: ["LA County Sanitation Districts (Sanitation)", "CEQA Lead Agency (CEQA)"],
+    toolKeys: ["sanitation", "ceqa"],
+  },
+  {
+    name: "Waterways & HazMat",
+    agencies: ["CDFW + US Army Corps (CDFW_USACE)", "LA County Fire / CUPA (Fire_CUPA)"],
+    toolKeys: ["cdfw", "usace", "fire_hazmat", "fire_hazwaste"],
+  },
+];
+
+function buildAgencyPrompt(
+  group: (typeof AGENCY_GROUPS)[number],
+  projectDesc: string,
+  classification: unknown,
+  toolResults: Record<string, unknown>
+): string {
+  const relevantResults = Object.fromEntries(
+    group.toolKeys.map((k) => [k, toolResults[k]])
+  );
+
+  return `Analyze permit requirements for ONLY these agencies: ${group.agencies.join(", ")}
+
+Project: ${projectDesc}
+
+Classification: ${JSON.stringify(classification, null, 2)}
+
+Pre-computed threshold results (already evaluated — use these directly, do NOT re-check):
+${JSON.stringify(relevantResults, null, 2)}
+
+Based on these threshold results, determine which permits are required for each agency.
+For each permit, state: permit_name, required (boolean), confidence, reason (cite specific rule), timeline_weeks, forms, priority, estimated_cost.
+
+Output JSON:
+{
+  "agency_analyses": [
+    {
+      "agency": "Full Name",
+      "agency_code": "CODE",
+      "reasoning_chain": [{"type":"thought","content":"..."}],
+      "permits": [{ "permit_name":"...", "required":true, "confidence":"high", "reason":"...", "timeline_weeks":12, "forms":["..."], "priority":"critical", "estimated_cost":"$X" }]
+    }
+  ]
+}`;
+}
+
+const AGENCY_SYSTEM = `You are an expert LA County environmental permit analyst. You receive pre-computed threshold check results and must determine which permits are required. Be concise. Cite specific rules. Output valid JSON only.
+
+${REGULATIONS_KNOWLEDGE_BASE}`;
+
+export async function POST(req: Request) {
+  const { projectDescription } = await req.json();
+
+  if (!projectDescription || typeof projectDescription !== "string") {
+    return new Response(JSON.stringify({ error: "Project description is required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: AgentEvent) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        } catch {
+          // Stream closed
+        }
+      };
+
+      try {
+        // ===== AGENT 1: CLASSIFIER (nano-9b, fast) =====
+        send({ type: "agent_start", agent: "Project Classifier", model: MODELS.fast });
+
+        const classificationResult = await runAgentLoop(
+          "fast",
+          CLASSIFIER_SYSTEM_PROMPT,
+          `Classify this project for LA County environmental permitting:\n\n${projectDescription}`,
+          CLASSIFIER_TOOLS,
+          "Project Classifier",
+          send,
+          4 // fewer iterations — classifier is simple
+        );
+
+        send({ type: "agent_complete", agent: "Project Classifier", result: classificationResult as Record<string, unknown> });
+
+        // ===== PRE-COMPUTE all tool results (instant, no API calls) =====
+        const toolResults = preComputeToolResults(classificationResult as Record<string, unknown>);
+        send({
+          type: "thought",
+          agent: "Permit Reasoning Agent",
+          content: `Pre-computed ${Object.keys(toolResults).length} threshold checks across all agencies. Running parallel analysis...`,
+        });
+
+        // ===== AGENT 2: PARALLEL PERMIT ANALYSIS (3 concurrent calls to super-49b) =====
+        send({ type: "agent_start", agent: "Permit Reasoning Agent", model: MODELS.reasoning });
+
+        const agencyPromises = AGENCY_GROUPS.map(async (group) => {
+          const userMsg = buildAgencyPrompt(
+            group,
+            projectDescription,
+            classificationResult,
+            toolResults as Record<string, unknown>
+          );
+
+          send({ type: "thought", agent: "Permit Reasoning Agent", content: `Analyzing ${group.name}...` });
+
+          const response = await callNemotronWithMessages(
+            "reasoning",
+            [
+              { role: "system", content: AGENCY_SYSTEM },
+              { role: "user", content: userMsg },
+            ],
+            { maxTokens: 3000, temperature: 0.2 }
+          );
+
+          const content = response.choices[0].message.content || "";
+          if (content) {
+            send({ type: "thought", agent: "Permit Reasoning Agent", content: `${group.name} analysis complete.` });
+          }
+
+          return extractJSON(content) as { agency_analyses?: unknown[] } | null;
+        });
+
+        const agencyResults = await Promise.all(agencyPromises);
+
+        // Merge all agency analyses
+        const allAnalyses = agencyResults.flatMap(
+          (r) => (r?.agency_analyses as unknown[]) || []
+        );
+
+        const permitResult = { agency_analyses: allAnalyses };
+
+        send({ type: "agent_complete", agent: "Permit Reasoning Agent", result: permitResult as Record<string, unknown> });
+
+        // ===== AGENT 3: SYNTHESIZER (nano-9b for speed — synthesis is simpler) =====
+        send({ type: "agent_start", agent: "Synthesis Agent", model: MODELS.fast });
+
+        let synthesisResult;
+        try {
+          const response = await callNemotronWithMessages(
+            "fast",
+            [
+              { role: "system", content: SYNTHESIZER_SYSTEM_PROMPT },
+              {
+                role: "user",
+                content: `Create optimal permit filing sequence.\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
+              },
+            ],
+            { maxTokens: 2048, temperature: 0.2 }
+          );
+
+          const content = response.choices[0].message.content || "";
+          if (content) {
+            send({ type: "thought", agent: "Synthesis Agent", content });
+          }
+
+          synthesisResult = extractJSON(content) || {
+            synthesis_reasoning: ["Analysis complete"],
+            recommended_sequence: ["File all permits as identified"],
+            parallel_tracks: [],
+            critical_path: [],
+            estimated_total_timeline_months: 12,
+            warnings: [],
+            cost_estimate_range: "Contact agencies for exact costs",
+          };
+        } catch (error) {
+          send({
+            type: "error",
+            agent: "Synthesis Agent",
+            error: `Synthesis failed: ${error instanceof Error ? error.message : "Unknown"}`,
+          });
+          synthesisResult = {
+            synthesis_reasoning: ["Synthesis error — using permit data as-is"],
+            recommended_sequence: ["Consult environmental consultant"],
+            parallel_tracks: [],
+            critical_path: [],
+            estimated_total_timeline_months: 12,
+            warnings: ["Synthesis agent error — timeline estimated"],
+            cost_estimate_range: "Contact agencies",
+          };
+        }
+
+        send({ type: "agent_complete", agent: "Synthesis Agent", result: synthesisResult as Record<string, unknown> });
+
+        // ===== FINAL OUTPUT =====
+        send({
+          type: "final_result",
+          data: {
+            classification: classificationResult,
+            agency_analyses: allAnalyses,
+            synthesis: synthesisResult,
+          } as never,
+        });
+      } catch (error) {
+        send({
+          type: "error",
+          error: `Pipeline failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
