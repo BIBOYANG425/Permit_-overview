@@ -1,135 +1,212 @@
-# LA County Permit Navigator
+# SoCal Permit Navigator
 
-A multi-agent agentic RAG application that determines which environmental permits are required across 6+ LA County regulatory agencies for any construction or development project. Enter a plain-English project description and get a full permit analysis with cost estimates, timelines, and filing sequences.
+> *Tell us what you're building. We'll tell you every permit you need.*
 
-**Live Demo:** [la-permit-navigator.vercel.app](https://la-permit-navigator.vercel.app)
+A multi-agent AI system that analyzes environmental permit requirements across **10+ regulatory agencies** in Los Angeles and Ventura Counties. Describe your project in plain English, get a full compliance report with cost estimates, timelines, filing sequences, and agency-specific citations — in under 60 seconds.
 
-**Instant Demo:** [Try the cached demo](https://la-permit-navigator.vercel.app/?demo=san-pedro-200-unit-renovation) (200-unit apartment renovation in San Pedro)
+[![Built with NVIDIA NIM](https://img.shields.io/badge/NVIDIA-NIM%20API-76B900?logo=nvidia&logoColor=white)](https://build.nvidia.com/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Deployed on Vercel](https://img.shields.io/badge/Vercel-Deployed-000?logo=vercel)](https://la-permit-navigator.vercel.app)
 
-## How It Works
+**[Live Demo](https://la-permit-navigator.vercel.app)** · **[Instant Demo (no API key needed)](https://la-permit-navigator.vercel.app/?demo=san-pedro-200-unit-renovation)**
 
-The app uses a **3-agent pipeline** powered by NVIDIA Nemotron models that processes your project through classification, permit reasoning, and synthesis:
+---
+
+## 🌟 Highlights
+
+- **3-agent pipeline** — Classifier, Permit Reasoner, and Synthesizer work in concert, each using the right model for the job
+- **2-county coverage** — Los Angeles (SCAQMD) and Ventura (VCAPCD) with city-level permit requirements for 11 municipalities
+- **Real-time agent trace** — Watch the AI think through regulations, call tools, and reason about your project via SSE streaming
+- **Professional report generation** — Multi-pass report writer produces structured compliance memorandums with regulatory citations
+- **Zero external databases** — Entire regulatory knowledge base ships with the app; no vector DB, no API keys beyond NVIDIA NIM
+- **Sub-60-second analysis** — Pre-computed tool results + parallel agency analysis + fast model routing
+
+---
+
+## 🚀 How It Works
 
 ```
-User Input → Agent 1: Classifier → Agent 2: Permit Reasoner → Agent 3: Synthesizer → Results
+┌─────────────┐     ┌──────────────────┐     ┌──────────────────┐     ┌─────────────┐
+│   Project    │     │  Agent 1:        │     │  Agent 2: Permit │     │  Agent 3:   │
+│ Description  │────▶│  Classifier      │────▶│  Reasoner (x3    │────▶│  Synthesizer│
+│ + Address    │     │  (Nano 9B)       │     │  parallel)       │     │  (Nano 9B)  │
+└─────────────┘     │                  │     │  (Super 49B)     │     └──────┬──────┘
+                    │  SIC code, land  │     │                  │            │
+                    │  use, proximity  │     │  6+ agencies     │     ┌──────▼──────┐
+                    │  flags, hazmat   │     │  per county      │     │  Report     │
+                    └──────────────────┘     └──────────────────┘     │  Writer     │
+                                                                     │  (Nano 9B)  │
+                                                                     └─────────────┘
 ```
 
-1. **Project Classifier** (Nemotron Nano 9B) — Determines SIC code, land use type, and flags (school proximity, waterway, hazmat) using local tool calls
-2. **Permit Reasoning Agent** (Nemotron Super 49B) — Analyzes regulations across all 6 agencies in parallel, determining which permits are required with confidence levels
-3. **Synthesis Agent** (Nemotron Nano 9B) — Computes filing sequences, parallel tracks, critical path, cost estimates, and warnings
+1. **Classifier** — Determines SIC code, land use type, disturbance area, and proximity flags (school, waterway, hazmat) using local tool calls
+2. **Pre-computation** — 10+ threshold checks run locally in TypeScript. Zero API calls. Instant results.
+3. **Permit Reasoner** — Analyzes all agencies in 3 parallel batches using the reasoning model with full regulatory KB context
+4. **Synthesizer** — Computes filing order, parallel tracks, critical path, total cost range, and warnings
+5. **Report Writer** — Generates a professional compliance memorandum in multi-pass JSON (header → batched agency sections)
 
-All agent reasoning is streamed in real-time via SSE so users can watch the AI think through the analysis.
+---
 
-## Agencies Covered
+## 🏛️ Agencies Covered
 
-| Agency | Code | Scope |
-|--------|------|-------|
-| South Coast AQMD | SCAQMD | Air quality permits, dust control, health risk assessments |
-| LA Regional Water Quality Control Board | RWQCB | Stormwater permits (CGP/IGP), SWPPP |
-| LA County Sanitation Districts | Sanitation | Industrial waste permits, pretreatment |
-| CEQA Lead Agency | CEQA | Environmental review, categorical exemptions |
-| CDFW + US Army Corps | CDFW_USACE | Streambed alteration, Section 404 wetlands |
-| LA County Fire / CUPA | Fire_CUPA | Hazardous materials, waste generator permits |
+### Los Angeles County
 
-## Tech Stack
+| Agency | Code | What It Covers |
+|--------|------|----------------|
+| South Coast AQMD | `SCAQMD` | Air permits, Rule 403 dust control, RECLAIM, health risk assessments |
+| LA Regional Water Board | `RWQCB` | Stormwater (CGP/IGP), SWPPP, 303(d) impaired waterbodies |
+| LA County Sanitation | `Sanitation` | Industrial waste permits, pretreatment, 40 CFR categorical standards |
+| CEQA Lead Agency | `CEQA` | Environmental review, categorical exemptions, MND/EIR triggers |
+| CDFW + Army Corps | `CDFW_USACE` | Streambed alteration (1602), Section 404 wetlands |
+| LA County Fire / CUPA | `Fire_CUPA` | HMBP, CalARP, hazardous waste generator, UST/AST |
+
+### Ventura County
+
+| Agency | Code | What It Covers |
+|--------|------|----------------|
+| Ventura County APCD | `VCAPCD` | Authority to Construct, BACT, Rule 26 NSR, ROC/NOx thresholds |
+| Central Coast RWQCB | `RWQCB` | Region 3 stormwater, TMDL compliance, Ventura River watershed |
+| Ventura County Wastewater | `Wastewater` | Industrial user permits, sewer connection, FOG compliance |
+| CEQA Lead Agency | `CEQA` | County-level environmental review |
+| CDFW + Army Corps | `CDFW_USACE` | Calleguas Creek, Santa Clara River protections |
+| Ventura County Fire / CUPA | `Fire_CUPA` | HMBP, hazardous waste, fire plan review |
+
+### City-Level Permits (11 Cities)
+
+> Building permits, fire plan review, planning entitlements, and public works encroachment — tailored per municipality.
+
+`Carson` · `Glendale` · `Long Beach` · `Pasadena` · `Torrance` · `Oxnard` · `Ventura` · `Thousand Oaks` · `LA County Unincorporated` · `Ventura County Unincorporated`
+
+---
+
+## ⚡ Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript |
-| Styling | Tailwind CSS 4 |
-| AI Models | NVIDIA NIM API (OpenAI-compatible) |
-| Fast Model | `nvidia/nvidia-nemotron-nano-9b-v2` (classification + synthesis) |
-| Reasoning Model | `nvidia/llama-3.3-nemotron-super-49b-v1` (permit analysis) |
+| Framework | **Next.js 16** (App Router, Turbopack) |
+| Language | **TypeScript 5** with Zod schema validation |
+| Styling | **Tailwind CSS 4** (dark theme, dot grid background) |
+| AI Models | **NVIDIA NIM API** (OpenAI-compatible endpoints) |
+| Fast Model | `nvidia/nvidia-nemotron-nano-9b-v2` — classification, synthesis, reports |
+| Reasoning Model | `nvidia/llama-3.3-nemotron-super-49b-v1` — permit analysis |
 | Streaming | Server-Sent Events (SSE) |
-| Geocoding | OpenStreetMap Nominatim API |
-| PDF Parsing | pdf-parse |
+| Geocoding | OpenStreetMap Nominatim |
+| PDF/OCR | pdf-parse + NVIDIA OCR API |
 | Deployment | Vercel |
 
-## Architecture
+---
+
+## 📁 Architecture
 
 ```
 src/
 ├── app/
-│   ├── page.tsx                    # Main UI with form, agent trace, results
-│   ├── api/
-│   │   ├── analyze/route.ts        # Main SSE streaming endpoint (3-agent pipeline)
-│   │   ├── demo/route.ts           # Cached demo replay endpoint
-│   │   └── upload/route.ts         # PDF/document upload + text extraction
-│   └── globals.css                 # Dark theme with dot grid background
+│   ├── page.tsx                         # Main UI — form, agent trace, results, report
+│   └── api/
+│       ├── analyze/route.ts             # 3-agent SSE pipeline
+│       ├── report/route.ts              # Multi-pass report generation
+│       ├── demo/route.ts                # Cached demo replay
+│       └── upload/route.ts              # PDF/image upload + OCR extraction
+│
 ├── components/
-│   ├── AddressInput.tsx            # Geocoding with map preview
-│   ├── AgentTrace.tsx              # Live agent reasoning trace panel
-│   ├── PermitResults.tsx           # Results with SVG charts (cost, Gantt, donut)
-│   ├── PermitCard.tsx              # Individual permit cards
-│   ├── ClassificationBanner.tsx    # Project classification summary
-│   ├── TimelineView.tsx            # Filing sequence + critical path
-│   ├── GuidedQuestions.tsx         # Structured questionnaire
-│   └── DocumentUpload.tsx          # Drag-and-drop file upload
+│   ├── AgentTrace.tsx                   # Live reasoning trace panel
+│   ├── PermitResults.tsx                # SVG charts (cost bars, Gantt, donut)
+│   ├── ReportView.tsx                   # Professional compliance memo renderer
+│   ├── AddressInput.tsx                 # Geocoded address with map preview
+│   ├── GuidedQuestions.tsx              # Structured project questionnaire
+│   ├── DocumentUpload.tsx               # Drag-and-drop file upload
+│   ├── ClassificationBanner.tsx         # Project classification summary
+│   ├── PermitCard.tsx                   # Individual permit detail cards
+│   └── TimelineView.tsx                 # Filing sequence + critical path
+│
 └── lib/
-    ├── nim-client.ts               # NVIDIA NIM API client (lazy-init, dual keys)
-    ├── regulations.ts              # 6-agency regulatory knowledge base (~3K tokens)
-    ├── types.ts                    # TypeScript interfaces
-    ├── demo-cache.ts               # Pre-cached demo scenarios
+    ├── nim-client.ts                    # NVIDIA NIM client (dual-model, lazy-init)
+    ├── types.ts                         # 345-line type system
+    ├── demo-cache.ts                    # Pre-cached demo scenarios
+    │
     ├── agents/
-    │   ├── classifier.ts           # Agent 1 system prompt + tools
-    │   ├── permit-reasoner.ts      # Agent 2 system prompt + regulations KB
-    │   └── synthesizer.ts          # Agent 3 system prompt
+    │   ├── classifier.ts                # Agent 1: SIC + land use + proximity
+    │   ├── permit-reasoner.ts           # Agent 2: multi-agency regulatory analysis
+    │   ├── synthesizer.ts               # Agent 3: timeline + cost synthesis
+    │   └── report-writer.ts             # Report: header + agency section prompts
+    │
+    ├── config/
+    │   ├── counties/
+    │   │   ├── index.ts                 # County registry + coordinate detection
+    │   │   ├── la.ts                    # LA County config + regulationsKB
+    │   │   └── ventura.ts               # Ventura County config + regulationsKB
+    │   └── cities/
+    │       ├── index.ts                 # City registry + address detection
+    │       └── *.ts                     # 11 city configurations
+    │
     └── tools/
-        ├── sic-lookup.ts           # SIC code classification (30+ industries)
-        ├── waterway-check.ts       # LA County 303(d) impaired waterbodies
-        ├── school-proximity.ts     # SCAQMD Rule 1401.1 school check
-        ├── ceqa-exemption-check.ts # CEQA categorical exemption tree
-        ├── threshold-check.ts      # Agency threshold evaluator (all 6 agencies)
-        └── timeline-calculator.ts  # Dependency + timeline computation
+        ├── sic-lookup.ts                # SIC code database (60+ industries)
+        ├── threshold-check.ts           # Agency threshold evaluator
+        ├── ceqa-exemption-check.ts      # CEQA categorical exemption tree
+        ├── waterway-check.ts            # 303(d) impaired waterbody matching
+        ├── school-proximity.ts          # SCAQMD Rule 1401.1 school check
+        ├── city-permit-check.ts         # City-level building/fire/planning permits
+        ├── fire-review-check.ts         # Fire plan review + sprinkler requirements
+        └── timeline-calculator.ts       # Permit dependency graph + critical path
 ```
 
-## Key Features
+---
 
-- **ReAct Pattern** — Agents reason, call tools, observe results, and iterate (visible in real-time)
-- **Multi-Model Strategy** — Fast nano-9b for classification/synthesis, powerful super-49b for complex reasoning
-- **Parallel Agency Analysis** — Agent 2 splits into 3 concurrent API calls (Air+Water, Sanitation+CEQA, Waterways+HazMat)
-- **Pre-computed Tools** — All 11 tool results computed locally after classification (zero extra API calls)
-- **SVG Visualizations** — Cost breakdown bars, Gantt timeline chart, agency distribution donut (no charting library)
-- **Geocoded Address Input** — OpenStreetMap integration with interactive map preview
-- **Document Upload** — PDF, TXT, CSV, JSON, DOC parsing to augment project context
-- **Guided Questionnaire** — Structured fields for project type, site size, proximity flags
-- **Demo Caching** — Pre-recorded SSE event sequences for instant demo playback
+## 🏎️ Performance
 
-## Speed Optimizations
+> *The fastest permit analysis is one that doesn't wait for the network.*
 
-1. Pre-compute all tool results after classification (instant, no API round-trips)
-2. Inject pre-computed results directly into Agent 2 prompts (skip tool-calling loop)
-3. Run 3 agency groups in parallel via `Promise.all`
-4. Use fast nano-9b model for Agents 1 & 3 (classification + synthesis)
-5. Cache demo scenarios with SSE replay at realistic delays
+| Optimization | Impact |
+|-------------|--------|
+| Pre-compute all tool results after classification | 10+ checks run locally in ~0ms |
+| Inject pre-computed results into Agent 2 prompts | Skips entire tool-calling loop |
+| Run 3 agency groups via `Promise.all` | 3x faster permit analysis |
+| Use Nano 9B for Agents 1, 3, and Report Writer | ~2s per call vs ~30s for reasoning model |
+| Batch report sections 3 at a time | Parallel agency section generation |
+| Cache demo scenarios with SSE replay | Instant playback at realistic delays |
 
-## Getting Started
+---
+
+## ⬇️ Getting Started
 
 ```bash
-# Install dependencies
 npm install
+```
 
-# Set environment variables
-cp .env.example .env.local
-# Add your NVIDIA NIM API keys:
-# NVIDIA_NIM_API_KEY_FAST=nvapi-...
-# NVIDIA_NIM_API_KEY_REASONING=nvapi-...
+Create `.env.local` with your NVIDIA NIM API keys:
 
-# Run development server
+```env
+NVIDIA_NIM_API_KEY_FAST=nvapi-...
+NVIDIA_NIM_API_KEY_REASONING=nvapi-...
+```
+
+Get free API keys at [build.nvidia.com](https://build.nvidia.com/).
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to use the app.
+Open [localhost:3000](http://localhost:3000). Try the instant demo with no API keys: append `?demo=san-pedro-200-unit-renovation` to the URL.
 
-## Deployment
+---
 
-Deployed on Vercel with environment variables configured for both NVIDIA API keys.
+## 🚢 Deployment
 
 ```bash
 vercel --prod
 ```
 
-## Built For
+Set `NVIDIA_NIM_API_KEY_FAST` and `NVIDIA_NIM_API_KEY_REASONING` in your Vercel project environment variables.
 
-**Agents for Impact Hackathon** — NVIDIA + Vercel (March 2026)
+---
+
+## 🏗️ Built For
+
+**[NVIDIA Agents for Impact Hackathon](https://impact-agents.devpost.com/)** — NVIDIA + Vercel (March 2026)
+
+---
+
+## 📜 License
+
+MIT
