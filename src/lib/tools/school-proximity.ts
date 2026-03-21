@@ -1,7 +1,10 @@
+import { CountyConfig } from "../types";
+
 interface SchoolProximityInput {
   location_description: string;
   mentions_school_nearby?: boolean;
   distance_if_known_ft?: number;
+  countyConfig?: CountyConfig;
 }
 
 interface SchoolProximityResult {
@@ -14,6 +17,8 @@ interface SchoolProximityResult {
 
 export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximityResult {
   const locLower = input.location_description.toLowerCase();
+  const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
+  const tacRule = input.countyConfig?.airDistrict.rules.tac || "Rule 1401/1401.1";
 
   // Explicit distance provided
   if (input.distance_if_known_ft !== undefined) {
@@ -23,9 +28,9 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
       distance_ft: input.distance_if_known_ft,
       rule_1401_1_applies: isNear,
       threshold_description: isNear
-        ? "SCAQMD Rule 1401.1 applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)"
-        : "Standard Rule 1401 threshold of 10-in-a-million applies",
-      reasoning: `Project is ${input.distance_if_known_ft} ft from nearest school. Rule 1401.1 threshold is 1,000 ft.`,
+        ? `${airName} ${tacRule} applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)`
+        : `Standard ${tacRule} threshold of 10-in-a-million applies`,
+      reasoning: `Project is ${input.distance_if_known_ft} ft from nearest school. ${tacRule} threshold is 1,000 ft.`,
     };
   }
 
@@ -48,9 +53,9 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
       distance_ft: distance,
       rule_1401_1_applies: isNear,
       threshold_description: isNear
-        ? "SCAQMD Rule 1401.1 applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)"
-        : "Standard Rule 1401 threshold of 10-in-a-million applies",
-      reasoning: `Project is approximately ${distance} ft from a school. Rule 1401.1 threshold is 1,000 ft.`,
+        ? `${airName} ${tacRule} applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)`
+        : `Standard ${tacRule} threshold of 10-in-a-million applies`,
+      reasoning: `Project is approximately ${distance} ft from a school. ${tacRule} threshold is 1,000 ft.`,
     };
   }
 
@@ -59,7 +64,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
       near_school: true,
       distance_ft: null,
       rule_1401_1_applies: true,
-      threshold_description: "SCAQMD Rule 1401.1 likely applies — verify exact distance. Maximum individual cancer risk threshold may be reduced to 1-in-a-million.",
+      threshold_description: `${airName} ${tacRule} likely applies — verify exact distance. Maximum individual cancer risk threshold may be reduced to 1-in-a-million.`,
       reasoning: "Location description suggests proximity to a school but exact distance unknown. Conservative determination: assume within 1,000 ft.",
     };
   }
@@ -69,8 +74,8 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
       near_school: true,
       distance_ft: null,
       rule_1401_1_applies: true,
-      threshold_description: "School mentioned in project description — Rule 1401.1 screening required. Determine exact distance to confirm applicability.",
-      reasoning: "School is referenced in the project description. SCAQMD requires distance verification for Rule 1401.1 applicability.",
+      threshold_description: `School mentioned in project description — ${tacRule} screening required. Determine exact distance to confirm applicability.`,
+      reasoning: `School is referenced in the project description. ${airName} requires distance verification for ${tacRule} applicability.`,
     };
   }
 
@@ -78,7 +83,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
     near_school: false,
     distance_ft: null,
     rule_1401_1_applies: false,
-    threshold_description: "No school proximity identified — standard Rule 1401 threshold of 10-in-a-million applies. Applicant should verify by checking SCAQMD's facility mapping tool.",
+    threshold_description: `No school proximity identified — standard ${tacRule} threshold of 10-in-a-million applies. Applicant should verify by checking ${airName}'s facility mapping tool.`,
     reasoning: "No school or educational facility detected in project description. Standard toxic air contaminant thresholds apply.",
   };
 }

@@ -1,5 +1,50 @@
 import { NextResponse } from "next/server";
 
+const NVIDIA_OCR_API_KEY = process.env.NVIDIA_OCR_API_KEY || "";
+
+async function extractWithNvidiaOCR(buffer: Buffer, fileName: string): Promise<string> {
+  if (!NVIDIA_OCR_API_KEY) {
+    return "";
+  }
+
+  try {
+    const base64 = buffer.toString("base64");
+    const response = await fetch("https://ai.api.nvidia.com/v1/cv/nvidia/ocdrnet", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${NVIDIA_OCR_API_KEY}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        image: base64,
+        render_label: false,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`NVIDIA OCR error: ${response.status}`);
+      return "";
+    }
+
+    const data = await response.json();
+    // Extract text from OCR response
+    if (data.text) return data.text;
+    if (data.metadata?.text) return data.metadata.text;
+    // Handle structured bounding box output
+    if (data.object) {
+      const texts = data.object
+        .filter((obj: { label?: string }) => obj.label)
+        .map((obj: { label: string }) => obj.label);
+      return texts.join("\n");
+    }
+    return JSON.stringify(data);
+  } catch (error) {
+    console.error("NVIDIA OCR failed:", error);
+    return "";
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -22,15 +67,70 @@ export async function POST(req: Request) {
           const pdfMod = await import("pdf-parse") as any;
           const pdfParse = pdfMod.default || pdfMod;
           const data = await pdfParse(buffer);
-          results.push({
-            name: file.name,
-            text: data.text.slice(0, 15000), // Cap at 15k chars to stay within context
-            pages: data.numpages,
-          });
+
+          let text = data.text?.trim() || "";
+
+          // If pdf-parse returned very little text, the PDF is likely scanned — try NVIDIA OCR
+          if (text.length < 100 && NVIDIA_OCR_API_KEY) {
+            const ocrText = await extractWithNvidiaOCR(buffer, file.name);
+            if (ocrText.length > text.length) {
+              text = ocrText;
+            }
+          }
+
+          if (text.length > 0) {
+            results.push({
+              name: file.name,
+              text: text.slice(0, 15000),
+              pages: data.numpages,
+            });
+          } else {
+            results.push({
+              name: file.name,
+              text: "[Could not parse PDF — file may be scanned/image-based]",
+            });
+          }
         } catch {
+          // Fallback to NVIDIA OCR for problematic PDFs
+          if (NVIDIA_OCR_API_KEY) {
+            const ocrText = await extractWithNvidiaOCR(buffer, file.name);
+            if (ocrText.length > 0) {
+              results.push({ name: file.name, text: ocrText.slice(0, 15000) });
+            } else {
+              results.push({
+                name: file.name,
+                text: "[Could not parse PDF — file may be scanned/image-based]",
+              });
+            }
+          } else {
+            results.push({
+              name: file.name,
+              text: "[Could not parse PDF — file may be scanned/image-based]",
+            });
+          }
+        }
+      } else if (
+        fileName.endsWith(".png") ||
+        fileName.endsWith(".jpg") ||
+        fileName.endsWith(".jpeg") ||
+        fileName.endsWith(".tiff") ||
+        fileName.endsWith(".bmp")
+      ) {
+        // Image files — use NVIDIA OCR
+        if (NVIDIA_OCR_API_KEY) {
+          const ocrText = await extractWithNvidiaOCR(buffer, file.name);
+          if (ocrText.length > 0) {
+            results.push({ name: file.name, text: ocrText.slice(0, 15000) });
+          } else {
+            results.push({
+              name: file.name,
+              text: "[Could not extract text from image. The image may not contain readable text.]",
+            });
+          }
+        } else {
           results.push({
             name: file.name,
-            text: "[Could not parse PDF — file may be scanned/image-based]",
+            text: "[Image OCR requires NVIDIA_OCR_API_KEY to be configured]",
           });
         }
       } else if (
@@ -45,7 +145,6 @@ export async function POST(req: Request) {
           text: text.slice(0, 15000),
         });
       } else if (fileName.endsWith(".doc") || fileName.endsWith(".docx")) {
-        // Basic extraction for doc files — just grab readable text
         const text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
         const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
         if (cleaned.length > 50) {
@@ -59,7 +158,7 @@ export async function POST(req: Request) {
       } else {
         results.push({
           name: file.name,
-          text: "[Unsupported file format. Supported: PDF, TXT, MD, CSV, JSON]",
+          text: "[Unsupported file format. Supported: PDF, TXT, MD, CSV, JSON, PNG, JPG, TIFF]",
         });
       }
     }

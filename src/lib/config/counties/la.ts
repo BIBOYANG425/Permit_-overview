@@ -1,4 +1,291 @@
-export const REGULATIONS_KNOWLEDGE_BASE = `
+import { CountyConfig } from "../../types";
+
+export const LA_COUNTY_CONFIG: CountyConfig = {
+  id: "la",
+  name: "Los Angeles County",
+
+  airDistrict: {
+    name: "South Coast Air Quality Management District",
+    code: "SCAQMD",
+    rules: {
+      dust: "Rule 403",
+      tac: "Rule 1401/1401.1",
+      nsr: "Regulation XIII",
+    },
+  },
+
+  waterBoard: {
+    name: "LA RWQCB Region 4",
+    code: "RWQCB",
+    region: 4,
+  },
+
+  wastewater: {
+    name: "LA County Sanitation Districts",
+    code: "Sanitation",
+  },
+
+  fireCupa: {
+    name: "LA County Fire / CUPA",
+    code: "Fire_CUPA",
+  },
+
+  waterbodies: [
+    {
+      name: "Los Angeles River",
+      impairments: [
+        "metals (copper, lead, zinc)",
+        "bacteria (E. coli)",
+        "nutrients (nitrogen, phosphorus)",
+        "trash",
+        "ammonia",
+      ],
+      drainage_area: [
+        "San Fernando Valley",
+        "Glendale",
+        "Burbank",
+        "Downtown",
+        "Vernon",
+        "South Gate",
+        "Compton",
+        "Long Beach",
+        "Atwater Village",
+        "Elysian Valley",
+      ],
+      keywords: [
+        "la river",
+        "los angeles river",
+        "river",
+        "san fernando",
+        "downtown",
+        "vernon",
+        "south gate",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Dominguez Channel",
+      impairments: [
+        "copper",
+        "zinc",
+        "lead",
+        "bacteria (E. coli, enterococcus)",
+        "toxicity",
+      ],
+      drainage_area: [
+        "South Bay",
+        "Torrance",
+        "Carson",
+        "Wilmington",
+        "Harbor City",
+        "Gardena",
+        "Hawthorne",
+        "Lawndale",
+        "Compton",
+      ],
+      keywords: [
+        "dominguez",
+        "south bay",
+        "torrance",
+        "carson",
+        "harbor",
+        "wilmington",
+        "gardena",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Ballona Creek",
+      impairments: [
+        "metals (copper, lead, zinc, silver)",
+        "bacteria",
+        "toxics (DDT, PCBs, chlordane)",
+        "trash",
+      ],
+      drainage_area: [
+        "Westside",
+        "West LA",
+        "Culver City",
+        "Baldwin Hills",
+        "Mar Vista",
+        "Playa Del Rey",
+        "Marina Del Rey",
+      ],
+      keywords: [
+        "ballona",
+        "westside",
+        "west la",
+        "culver",
+        "baldwin",
+        "marina",
+        "playa",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "San Gabriel River",
+      impairments: [
+        "bacteria (E. coli)",
+        "metals (copper, lead, zinc)",
+        "cyanide",
+      ],
+      drainage_area: [
+        "San Gabriel Valley",
+        "Azusa",
+        "Irwindale",
+        "El Monte",
+        "Whittier",
+        "Pico Rivera",
+        "Downey",
+        "Lakewood",
+        "Long Beach",
+        "Seal Beach",
+      ],
+      keywords: [
+        "san gabriel",
+        "azusa",
+        "irwindale",
+        "el monte",
+        "whittier",
+        "pico rivera",
+        "downey",
+        "lakewood",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Compton Creek",
+      impairments: [
+        "metals (copper, lead, zinc)",
+        "bacteria",
+        "trash",
+      ],
+      drainage_area: [
+        "Compton",
+        "Willowbrook",
+        "Lynwood",
+        "Paramount",
+      ],
+      keywords: [
+        "compton",
+        "willowbrook",
+        "lynwood",
+        "paramount",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Santa Monica Bay",
+      impairments: [
+        "DDT",
+        "PCBs",
+        "bacteria",
+        "debris",
+      ],
+      drainage_area: [
+        "Santa Monica",
+        "Malibu",
+        "Pacific Palisades",
+        "Venice",
+        "El Segundo",
+        "Manhattan Beach",
+        "Hermosa Beach",
+        "Redondo Beach",
+      ],
+      keywords: [
+        "santa monica",
+        "malibu",
+        "venice",
+        "beach",
+        "bay",
+        "coast",
+        "ocean",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Long Beach Harbor / San Pedro Bay",
+      impairments: [
+        "copper",
+        "zinc",
+        "lead",
+        "PAHs",
+        "DDT",
+        "PCBs",
+        "bacteria",
+      ],
+      drainage_area: [
+        "Long Beach",
+        "San Pedro",
+        "Terminal Island",
+        "Port of Long Beach",
+        "Port of LA",
+      ],
+      keywords: [
+        "long beach",
+        "san pedro",
+        "port",
+        "harbor",
+        "terminal island",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Machado Lake",
+      impairments: [
+        "nutrients (nitrogen, phosphorus)",
+        "trash",
+        "odors",
+        "algae",
+      ],
+      drainage_area: [
+        "Harbor City",
+        "Wilmington",
+        "Ken Malloy Harbor Regional Park",
+      ],
+      keywords: [
+        "machado",
+        "harbor city",
+        "harbor regional",
+      ],
+      tmdl: true,
+    },
+    {
+      name: "Rio Hondo",
+      impairments: [
+        "metals",
+        "bacteria",
+        "nutrients",
+      ],
+      drainage_area: [
+        "Montebello",
+        "Pico Rivera",
+        "South El Monte",
+        "Whittier Narrows",
+      ],
+      keywords: [
+        "rio hondo",
+        "montebello",
+        "whittier narrows",
+      ],
+      tmdl: true,
+    },
+  ],
+
+  locationAreas: [
+    "Downtown LA",
+    "South Bay (Torrance, Carson, Gardena)",
+    "San Fernando Valley",
+    "Westside (West LA, Culver City)",
+    "Long Beach / Harbor Area",
+    "San Gabriel Valley",
+    "Vernon / Commerce / Bell",
+    "Compton / Lynwood / Paramount",
+    "Unincorporated LA County",
+    "Other / Not Sure",
+  ],
+
+  regulationsKB: `
 # LA County Environmental Permit Regulatory Knowledge Base
 
 ## Agency 1: South Coast Air Quality Management District (SCAQMD)
@@ -87,4 +374,5 @@ California Environmental Quality Act applies to discretionary projects.
 - **Aboveground Petroleum Storage Act (APSA)**: >1,320 gallons aggregate petroleum storage or any single tank >660 gallons.
 - **Hazardous Waste Generator**: Must obtain EPA ID number, determine generator status (VSQG/SQG/LQG), comply with storage time limits.
 - **Tiered Permitting**: For facilities treating hazardous waste on-site — Conditionally Exempt, Conditionally Authorized, or Permit by Rule.
-`;
+`,
+};

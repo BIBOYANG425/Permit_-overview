@@ -12,10 +12,14 @@ export default function AddressInput({
   value,
   onChange,
   isLoading,
+  onCountyDetected,
+  onCityDetected,
 }: {
   value: AddressData;
   onChange: (data: AddressData) => void;
   isLoading: boolean;
+  onCountyDetected?: (county: "la" | "ventura") => void;
+  onCityDetected?: (city: string | null) => void;
 }) {
   const [query, setQuery] = useState(value.address);
   const [suggestions, setSuggestions] = useState<
@@ -49,7 +53,7 @@ export default function AddressInput({
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?` +
           new URLSearchParams({
-            q: q + " Los Angeles County CA",
+            q: q + " Southern California",
             format: "json",
             limit: "5",
             countrycodes: "us",
@@ -84,6 +88,17 @@ export default function AddressInput({
     onChange({ address: s.display_name, lat, lng });
     setShowSuggestions(false);
     setSuggestions([]);
+
+    // Detect county
+    const lower = s.display_name.toLowerCase();
+    const venturaKeywords = ["ventura", "oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark", "ojai", "santa paula", "fillmore", "port hueneme"];
+    const isVentura = venturaKeywords.some(kw => lower.includes(kw));
+    onCountyDetected?.(isVentura ? "ventura" : "la");
+
+    // Detect city
+    const cities = ["torrance", "pasadena", "long beach", "glendale", "carson", "oxnard", "ventura", "san buenaventura", "thousand oaks"];
+    const detectedCity = cities.find(c => lower.includes(c)) || null;
+    onCityDetected?.(detectedCity);
   };
 
   const mapUrl =

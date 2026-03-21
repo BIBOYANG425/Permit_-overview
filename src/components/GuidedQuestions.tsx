@@ -16,6 +16,10 @@ export interface GuidedAnswers {
   wastewaterDetails: string;
   isNewConstruction: string;
   disturbanceAcres: string;
+  buildingSizeSqft: string;
+  stories: string;
+  constructionType: string;
+  occupancyType: string;
 }
 
 export const INITIAL_ANSWERS: GuidedAnswers = {
@@ -34,6 +38,10 @@ export const INITIAL_ANSWERS: GuidedAnswers = {
   wastewaterDetails: "",
   isNewConstruction: "",
   disturbanceAcres: "",
+  buildingSizeSqft: "",
+  stories: "",
+  constructionType: "",
+  occupancyType: "",
 };
 
 interface Question {
@@ -46,133 +54,164 @@ interface Question {
   helpText?: string;
 }
 
-const QUESTIONS: Question[] = [
-  {
-    key: "projectType",
-    label: "What type of project is this?",
-    type: "select",
-    options: [
-      "",
-      "Manufacturing / Assembly",
-      "Food Processing / Manufacturing",
-      "Chemical Processing",
-      "Metal Fabrication / Finishing",
-      "Recycling / Waste Processing",
-      "Warehouse / Distribution",
-      "Residential Development",
-      "Commercial Construction",
-      "Restaurant / Food Service",
-      "Auto Repair / Body Shop",
-      "Other",
-    ],
-  },
-  {
-    key: "locationArea",
-    label: "Where in LA County is the project?",
-    type: "select",
-    options: [
-      "",
-      "Downtown LA",
-      "South Bay (Torrance, Carson, Gardena)",
-      "San Fernando Valley",
-      "Westside (West LA, Culver City)",
-      "Long Beach / Harbor Area",
-      "San Gabriel Valley",
-      "Vernon / Commerce / Bell",
-      "Compton / Lynwood / Paramount",
-      "Unincorporated LA County",
-      "Other / Not Sure",
-    ],
-  },
-  {
-    key: "siteSize",
-    label: "What is the approximate site/building size?",
-    type: "text",
-    placeholder: "e.g., 15,000 sqft, 2 acres",
-  },
-  {
-    key: "isNewConstruction",
-    label: "Is this new construction or modification of an existing facility?",
-    type: "select",
-    options: ["", "New construction", "Modification / renovation", "Conversion / change of use", "Expansion of existing"],
-  },
-  {
-    key: "disturbanceAcres",
-    label: "Estimated land disturbance area (acres)?",
-    type: "text",
-    placeholder: "e.g., 1.5 acres (triggers stormwater permits at 1+ acre)",
-    helpText: "Construction General Permit required for 1+ acre disturbance",
-  },
-  {
-    key: "nearWaterway",
-    label: "Is the site near any waterway, channel, creek, or drainage?",
-    type: "select",
-    options: ["", "Yes", "No", "Not sure"],
-  },
-  {
-    key: "waterwayDetails",
-    label: "Which waterway or describe proximity:",
-    type: "text",
-    placeholder: "e.g., Adjacent to Dominguez Channel, 500ft from LA River",
-    showIf: (a) => a.nearWaterway === "Yes",
-  },
-  {
-    key: "nearSchool",
-    label: "Is the site near any school or daycare?",
-    type: "select",
-    options: ["", "Yes", "No", "Not sure"],
-    helpText: "SCAQMD Rule 1401.1 applies within 1,000 ft of schools",
-  },
-  {
-    key: "schoolDistance",
-    label: "Approximate distance to nearest school (feet):",
-    type: "text",
-    placeholder: "e.g., 800",
-    showIf: (a) => a.nearSchool === "Yes",
-  },
-  {
-    key: "involvesHazmat",
-    label: "Will the facility store or use hazardous materials?",
-    type: "select",
-    options: ["", "Yes", "No", "Not sure"],
-    helpText: "Includes chemicals, solvents, acids, flammables, batteries, etc.",
-  },
-  {
-    key: "hazmatDetails",
-    label: "What hazardous materials? (list types and approximate quantities)",
-    type: "text",
-    placeholder: "e.g., Solvents (200 gal), acids (50 gal), lithium batteries",
-    showIf: (a) => a.involvesHazmat === "Yes",
-  },
-  {
-    key: "hasEmissions",
-    label: "Will there be air emissions from equipment or processes?",
-    type: "select",
-    options: ["", "Yes", "No", "Not sure"],
-    helpText: "Includes paint booths, ovens, boilers, generators, soldering, welding",
-  },
-  {
-    key: "emissionsDetails",
-    label: "What equipment or processes produce emissions?",
-    type: "text",
-    placeholder: "e.g., Soldering stations, paint booth, natural gas boiler",
-    showIf: (a) => a.hasEmissions === "Yes",
-  },
-  {
-    key: "wastewater",
-    label: "Will the facility discharge process wastewater to the sewer?",
-    type: "select",
-    options: ["", "Yes", "No", "Not sure"],
-    helpText: "Process wastewater = anything beyond normal restroom/kitchen use",
-  },
-  {
-    key: "wastewaterDetails",
-    label: "Describe wastewater sources:",
-    type: "text",
-    placeholder: "e.g., Equipment wash water, cooling water, chemical rinse",
-    showIf: (a) => a.wastewater === "Yes",
-  },
+const LA_LOCATIONS = [
+  "", "Downtown LA", "South Bay (Torrance, Carson, Gardena)", "San Fernando Valley",
+  "Westside (West LA, Culver City)", "Long Beach / Harbor Area", "San Gabriel Valley",
+  "Vernon / Commerce / Bell", "Compton / Lynwood / Paramount",
+  "Unincorporated LA County", "Other / Not Sure",
 ];
+const VENTURA_LOCATIONS = [
+  "", "Oxnard", "Ventura (San Buenaventura)", "Thousand Oaks", "Simi Valley",
+  "Camarillo", "Moorpark", "Ojai", "Santa Paula", "Fillmore",
+  "Unincorporated Ventura County", "Other / Not Sure",
+];
+
+function getQuestions(countyId?: "la" | "ventura"): Question[] {
+  const locations = countyId === "ventura" ? VENTURA_LOCATIONS : LA_LOCATIONS;
+  const countyLabel = countyId === "ventura" ? "Ventura County" : "LA County";
+
+  return [
+    {
+      key: "projectType",
+      label: "What type of project is this?",
+      type: "select",
+      options: [
+        "",
+        "Manufacturing / Assembly",
+        "Food Processing / Manufacturing",
+        "Chemical Processing",
+        "Metal Fabrication / Finishing",
+        "Recycling / Waste Processing",
+        "Warehouse / Distribution",
+        "Residential Development",
+        "Commercial Construction",
+        "Restaurant / Food Service",
+        "Auto Repair / Body Shop",
+        "Other",
+      ],
+    },
+    {
+      key: "locationArea",
+      label: `Where in ${countyLabel} is the project?`,
+      type: "select",
+      options: locations,
+    },
+    {
+      key: "siteSize",
+      label: "What is the approximate site/building size?",
+      type: "text",
+      placeholder: "e.g., 15,000 sqft, 2 acres",
+    },
+    {
+      key: "isNewConstruction",
+      label: "Is this new construction or modification of an existing facility?",
+      type: "select",
+      options: ["", "New construction", "Modification / renovation", "Conversion / change of use", "Expansion of existing"],
+    },
+    {
+      key: "disturbanceAcres",
+      label: "Estimated land disturbance area (acres)?",
+      type: "text",
+      placeholder: "e.g., 1.5 acres (triggers stormwater permits at 1+ acre)",
+      helpText: "Construction General Permit required for 1+ acre disturbance",
+    },
+    {
+      key: "nearWaterway",
+      label: "Is the site near any waterway, channel, creek, or drainage?",
+      type: "select",
+      options: ["", "Yes", "No", "Not sure"],
+    },
+    {
+      key: "waterwayDetails",
+      label: "Which waterway or describe proximity:",
+      type: "text",
+      placeholder: "e.g., Adjacent to Dominguez Channel, 500ft from LA River",
+      showIf: (a) => a.nearWaterway === "Yes",
+    },
+    {
+      key: "nearSchool",
+      label: "Is the site near any school or daycare?",
+      type: "select",
+      options: ["", "Yes", "No", "Not sure"],
+      helpText: "SCAQMD Rule 1401.1 applies within 1,000 ft of schools",
+    },
+    {
+      key: "schoolDistance",
+      label: "Approximate distance to nearest school (feet):",
+      type: "text",
+      placeholder: "e.g., 800",
+      showIf: (a) => a.nearSchool === "Yes",
+    },
+    {
+      key: "involvesHazmat",
+      label: "Will the facility store or use hazardous materials?",
+      type: "select",
+      options: ["", "Yes", "No", "Not sure"],
+      helpText: "Includes chemicals, solvents, acids, flammables, batteries, etc.",
+    },
+    {
+      key: "hazmatDetails",
+      label: "What hazardous materials? (list types and approximate quantities)",
+      type: "text",
+      placeholder: "e.g., Solvents (200 gal), acids (50 gal), lithium batteries",
+      showIf: (a) => a.involvesHazmat === "Yes",
+    },
+    {
+      key: "hasEmissions",
+      label: "Will there be air emissions from equipment or processes?",
+      type: "select",
+      options: ["", "Yes", "No", "Not sure"],
+      helpText: "Includes paint booths, ovens, boilers, generators, soldering, welding",
+    },
+    {
+      key: "emissionsDetails",
+      label: "What equipment or processes produce emissions?",
+      type: "text",
+      placeholder: "e.g., Soldering stations, paint booth, natural gas boiler",
+      showIf: (a) => a.hasEmissions === "Yes",
+    },
+    {
+      key: "buildingSizeSqft",
+      label: "Building size (square feet)?",
+      type: "text",
+      placeholder: "e.g., 15000",
+      helpText: "Used for fire sprinkler and city permit determination",
+    },
+    {
+      key: "stories",
+      label: "Number of stories?",
+      type: "select",
+      options: ["", "1", "2", "3", "4", "5+"],
+    },
+    {
+      key: "constructionType",
+      label: "Construction type?",
+      type: "select",
+      options: ["", "Type I (Fire Resistive)", "Type II (Non-Combustible)", "Type III (Ordinary)", "Type IV (Heavy Timber)", "Type V (Wood Frame)"],
+    },
+    {
+      key: "occupancyType",
+      label: "Occupancy type?",
+      type: "select",
+      options: ["", "A (Assembly)", "B (Business)", "E (Educational)", "F (Factory)", "H (High Hazard)", "I (Institutional)", "M (Mercantile)", "R-1 (Hotels/Motels)", "R-2 (Apartments)", "R-3 (One/Two Family)", "S (Storage)", "U (Utility)"],
+      helpText: "Determines fire alarm and sprinkler requirements",
+    },
+    {
+      key: "wastewater",
+      label: "Will the facility discharge process wastewater to the sewer?",
+      type: "select",
+      options: ["", "Yes", "No", "Not sure"],
+      helpText: "Process wastewater = anything beyond normal restroom/kitchen use",
+    },
+    {
+      key: "wastewaterDetails",
+      label: "Describe wastewater sources:",
+      type: "text",
+      placeholder: "e.g., Equipment wash water, cooling water, chemical rinse",
+      showIf: (a) => a.wastewater === "Yes",
+    },
+  ];
+}
 
 export function buildGuidedDescription(answers: GuidedAnswers): string {
   const parts: string[] = [];
@@ -202,6 +241,10 @@ export function buildGuidedDescription(answers: GuidedAnswers): string {
   } else if (answers.hasEmissions === "Yes") {
     parts.push("Facility will have equipment with air emissions.");
   }
+  if (answers.buildingSizeSqft) parts.push(`Building size: ${answers.buildingSizeSqft} sqft.`);
+  if (answers.stories) parts.push(`${answers.stories} stories.`);
+  if (answers.constructionType) parts.push(`Construction type: ${answers.constructionType}.`);
+  if (answers.occupancyType) parts.push(`Occupancy: ${answers.occupancyType}.`);
   if (answers.wastewater === "Yes" && answers.wastewaterDetails) {
     parts.push(`Process wastewater: ${answers.wastewaterDetails}.`);
   } else if (answers.wastewater === "Yes") {
@@ -215,10 +258,12 @@ export default function GuidedQuestions({
   answers,
   onChange,
   isLoading,
+  countyId,
 }: {
   answers: GuidedAnswers;
   onChange: (answers: GuidedAnswers) => void;
   isLoading: boolean;
+  countyId?: "la" | "ventura";
 }) {
   const safeAnswers = answers || INITIAL_ANSWERS;
 
@@ -227,7 +272,7 @@ export default function GuidedQuestions({
   };
 
   const answeredCount = Object.values(safeAnswers).filter((v) => v.trim() !== "").length;
-  const visibleQuestions = QUESTIONS.filter((q) => !q.showIf || q.showIf(safeAnswers));
+  const visibleQuestions = getQuestions(countyId).filter((q) => !q.showIf || q.showIf(safeAnswers));
 
   return (
     <div className="space-y-3">

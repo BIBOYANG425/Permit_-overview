@@ -67,6 +67,14 @@ function CostBreakdownChart({ permits }: { permits: { permit: PermitDeterminatio
     CEQA: "#A855F7",
     CDFW_USACE: "#06B6D4",
     Fire_CUPA: "#EF4444",
+    VCAPCD: "#F59E0B",
+    "RWQCB-3": "#2563EB",
+    VC_EH: "#059669",
+    VC_EH_CUPA: "#DC2626",
+    Building: "#8B5CF6",
+    Planning: "#EC4899",
+    Fire: "#F97316",
+    PublicWorks: "#14B8A6",
   };
 
   return (
@@ -197,6 +205,14 @@ function AgencyDonut({ permits }: { permits: { permit: PermitDetermination; agen
     CEQA: "#A855F7",
     CDFW_USACE: "#06B6D4",
     Fire_CUPA: "#EF4444",
+    VCAPCD: "#F59E0B",
+    "RWQCB-3": "#2563EB",
+    VC_EH: "#059669",
+    VC_EH_CUPA: "#DC2626",
+    Building: "#8B5CF6",
+    Planning: "#EC4899",
+    Fire: "#F97316",
+    PublicWorks: "#14B8A6",
   };
 
   let currentAngle = 0;

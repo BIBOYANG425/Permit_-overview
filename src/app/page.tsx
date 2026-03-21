@@ -10,7 +10,8 @@ import GuidedQuestions, {
   buildGuidedDescription,
 } from "@/components/GuidedQuestions";
 import DocumentUpload, { UploadedDocument } from "@/components/DocumentUpload";
-import { AgentEvent, PermitAnalysis } from "@/lib/types";
+import { AgentEvent, PermitAnalysis, PermitReport } from "@/lib/types";
+import ReportView from "@/components/ReportView";
 
 // SVG Logo
 function Logo() {
@@ -37,6 +38,7 @@ const EXAMPLE_SCENARIOS: {
   address: AddressData;
   answers: Partial<GuidedAnswers>;
   demoId?: string;
+  county?: "la" | "ventura";
 }[] = [
   {
     label: "200-Unit Apartment Renovation",
@@ -117,6 +119,32 @@ const EXAMPLE_SCENARIOS: {
       emissionsDetails: "Battery processing equipment, potential toxic air contaminants",
     },
   },
+  {
+    label: "Food Processing (Oxnard, Ventura)",
+    description: "Building a 25,000 sqft food processing facility in Oxnard near the Santa Clara River with industrial wastewater, refrigeration systems, and chemical cleaning agents",
+    address: {
+      address: "2500 Ventura Blvd, Oxnard, CA 93036",
+      lat: 34.2164,
+      lng: -119.1770,
+    },
+    answers: {
+      projectType: "Food Processing / Manufacturing",
+      locationArea: "Oxnard",
+      siteSize: "25,000 sqft",
+      isNewConstruction: "New construction",
+      disturbanceAcres: "2",
+      nearWaterway: "Yes",
+      waterwayDetails: "Near Santa Clara River",
+      involvesHazmat: "Yes",
+      hazmatDetails: "Chemical cleaning agents, refrigerants",
+      hasEmissions: "Yes",
+      emissionsDetails: "Refrigeration systems, cooking equipment",
+      wastewater: "Yes",
+      wastewaterDetails: "Food processing wastewater",
+    },
+    county: "ventura" as const,
+    demoId: "oxnard-food-processing-plant",
+  },
 ];
 
 export default function Home() {
@@ -128,6 +156,10 @@ export default function Home() {
   const [freeText, setFreeText] = useState("");
   const [address, setAddress] = useState<AddressData>({ address: "", lat: null, lng: null });
   const [guidedAnswers, setGuidedAnswers] = useState<GuidedAnswers>(INITIAL_ANSWERS);
+  const [county, setCounty] = useState<"la" | "ventura">("la");
+  const [detectedCity, setDetectedCity] = useState<string | null>(null);
+  const [report, setReport] = useState<PermitReport | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // Check for ?demo= URL param on load
   useEffect(() => {
@@ -145,6 +177,7 @@ export default function Home() {
       setFreeText(scenario.description);
       setAddress(scenario.address);
       setGuidedAnswers({ ...INITIAL_ANSWERS, ...scenario.answers });
+      if (scenario.county) setCounty(scenario.county);
     }
 
     setEvents([]);
@@ -199,6 +232,7 @@ export default function Home() {
     setFreeText(scenario.description);
     setAddress(scenario.address);
     setGuidedAnswers({ ...INITIAL_ANSWERS, ...scenario.answers });
+    if (scenario.county) setCounty(scenario.county);
   };
 
   const guidedText = buildGuidedDescription(guidedAnswers);
@@ -245,7 +279,11 @@ export default function Home() {
         const response = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectDescription: parts.join("\n") }),
+          body: JSON.stringify({
+            projectDescription: parts.join("\n"),
+            county,
+            city: detectedCity,
+          }),
         });
 
         if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -283,8 +321,66 @@ export default function Home() {
         setIsRunning(false);
       }
     },
-    [freeText, address, guidedText, uploadedDocs, canSubmit, isRunning]
+    [freeText, address, guidedText, uploadedDocs, canSubmit, isRunning, county, detectedCity]
   );
+
+  const handleGenerateReport = useCallback(async () => {
+    if (!results || isGeneratingReport) return;
+    setIsGeneratingReport(true);
+    setReport(null);
+
+    const parts: string[] = [];
+    parts.push(`Project address: ${address.address}`);
+    if (freeText.trim()) parts.push(freeText.trim());
+    if (guidedText) parts.push(guidedText);
+
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analysis: results,
+          projectDescription: parts.join("\n"),
+          address: address.address,
+          county,
+          city: detectedCity,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Report API error: ${response.status}`);
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          try {
+            const event: AgentEvent = JSON.parse(trimmed.slice(6));
+            if (event.type === "agent_complete" && event.result) {
+              setReport(event.result as unknown as PermitReport);
+            } else if (event.type === "final_result" && event.result) {
+              setReport(event.result as unknown as PermitReport);
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (error) {
+      console.error("Report generation failed:", error);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [results, isGeneratingReport, address, freeText, guidedText, county, detectedCity]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -294,8 +390,28 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Logo />
             <div>
-              <h1 className="text-sm font-bold text-white">LA County Permit Navigator</h1>
+              <h1 className="text-sm font-bold text-white">SoCal Permit Navigator</h1>
               <p className="text-xs text-slate-500">Multi-Agent Environmental Permit Analysis</p>
+              <div className="flex items-center gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setCounty("la")}
+                  className={`text-xs px-2 py-0.5 rounded-full font-mono transition-colors ${
+                    county === "la" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  LA County
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCounty("ventura")}
+                  className={`text-xs px-2 py-0.5 rounded-full font-mono transition-colors ${
+                    county === "ventura" ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Ventura County
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -331,7 +447,20 @@ export default function Home() {
           style={{ maxHeight: "calc(100vh - 57px)" }}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            <AddressInput value={address} onChange={setAddress} isLoading={isRunning} />
+            <AddressInput
+              value={address}
+              onChange={setAddress}
+              isLoading={isRunning}
+              onCountyDetected={setCounty}
+              onCityDetected={setDetectedCity}
+            />
+
+            {detectedCity && (
+              <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                <span className="text-emerald-400">&#9679;</span>
+                City detected: <span className="text-slate-300 font-mono">{detectedCity}</span>
+              </div>
+            )}
 
             <div className="border-t border-slate-800/60" />
 
@@ -372,7 +501,7 @@ export default function Home() {
             </div>
 
             <div className="border-t border-slate-800/60" />
-            <GuidedQuestions answers={guidedAnswers} onChange={setGuidedAnswers} isLoading={isRunning} />
+            <GuidedQuestions answers={guidedAnswers} onChange={setGuidedAnswers} isLoading={isRunning} countyId={county} />
             <div className="border-t border-slate-800/60" />
             <DocumentUpload onDocumentsProcessed={handleDocsProcessed} isLoading={isRunning} />
 
@@ -417,6 +546,35 @@ export default function Home() {
           {results && (
             <div className="mt-6">
               <PermitResults data={results} />
+
+              {/* Generate Report Button */}
+              {!report && (
+                <button
+                  type="button"
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingReport}
+                  className="w-full mt-4 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating Professional Report...
+                    </>
+                  ) : (
+                    <>
+                      <span>&#9783;</span>
+                      Generate Full Permit Report
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Report View */}
+              {report && (
+                <div className="mt-4">
+                  <ReportView report={report} onClose={() => setReport(null)} />
+                </div>
+              )}
             </div>
           )}
         </div>
