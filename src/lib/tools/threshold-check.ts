@@ -1,5 +1,7 @@
+import { CountyConfig } from "../types";
+
 interface ThresholdCheckInput {
-  agency: "SCAQMD" | "RWQCB" | "Sanitation" | "CDFW" | "USACE" | "Fire_CUPA";
+  agency: "SCAQMD" | "VCAPCD" | "RWQCB" | "RWQCB-3" | "Sanitation" | "VC_EH" | "CDFW" | "USACE" | "Fire_CUPA" | "VC_EH_CUPA";
   check_type: string;
   sic_code?: string;
   disturbance_acres?: number;
@@ -7,6 +9,7 @@ interface ThresholdCheckInput {
   discharges_to_sewer?: boolean;
   stores_hazmat?: boolean;
   near_waterway?: boolean;
+  countyConfig?: CountyConfig;
 }
 
 interface ThresholdCheckResult {
@@ -25,48 +28,70 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
   const sicNum = input.sic_code ? parseInt(input.sic_code) : 0;
 
   switch (`${input.agency}:${input.check_type}`) {
-    // ===== SCAQMD =====
-    case "SCAQMD:air_permit":
+    // ===== Air District (SCAQMD / VCAPCD) =====
+    case "VCAPCD:air_permit":
+    case "SCAQMD:air_permit": {
+      const airRule = input.countyConfig?.airDistrict.rules.nsr || "Regulation XIII";
+      const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
+      const isVCAPCD = input.agency === "VCAPCD";
+      const permitName = isVCAPCD ? "Authority to Construct (ATC) + Permit to Operate" : "Permit to Construct (Form 400-A) + Permit to Operate";
+      const permitForms = isVCAPCD
+        ? ["VCAPCD Permit Application", "Equipment List", "Emissions Calculations", "BACT Analysis (if applicable)"]
+        : ["Form 400-A (Application for Permit to Construct)", "BACT Analysis (if applicable)", "Health Risk Assessment (if TAC)"];
       return {
         triggered: input.has_emissions_equipment !== false,
-        rule_or_regulation: "SCAQMD Regulation XIII — Permit to Construct / Operate",
+        rule_or_regulation: `${airName} ${airRule} — ${isVCAPCD ? "Authority to Construct / Operate" : "Permit to Construct / Operate"}`,
         threshold_value: "Any equipment with potential air emissions",
         project_value: input.has_emissions_equipment ? "Equipment with air emissions identified" : "No emissions equipment identified",
-        permit_required: "Permit to Construct (Form 400-A) + Permit to Operate",
-        reasoning: "SCAQMD requires permits for any equipment that may emit air contaminants, including boilers, generators, paint booths, ovens, soldering stations, and process equipment.",
+        permit_required: permitName,
+        reasoning: `${airName} requires permits for any equipment that may emit air contaminants, including boilers, generators, paint booths, ovens, soldering stations, and process equipment.`,
         estimated_timeline_weeks: 12,
         estimated_cost: "$5,000 - $25,000",
-        forms: ["Form 400-A (Application for Permit to Construct)", "BACT Analysis (if applicable)", "Health Risk Assessment (if TAC)"],
+        forms: permitForms,
       };
+    }
 
-    case "SCAQMD:fugitive_dust":
+    case "VCAPCD:fugitive_dust":
+    case "SCAQMD:fugitive_dust": {
+      const dustRule = input.countyConfig?.airDistrict.rules.dust || "Rule 403";
+      const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
       return {
         triggered: (input.disturbance_acres || 0) > 0,
-        rule_or_regulation: "SCAQMD Rule 403 — Fugitive Dust",
+        rule_or_regulation: `${airName} ${dustRule} — Fugitive Dust`,
         threshold_value: "Any ground disturbance activity",
         project_value: `${input.disturbance_acres || 0} acres of disturbance`,
-        permit_required: "Rule 403 Dust Control Plan (no permit needed, but compliance required)",
-        reasoning: "Rule 403 applies to ANY earth-moving activity. If ≥50 acres, a large operation notification is required. All projects must implement dust control measures.",
+        permit_required: `${dustRule} Dust Control Plan (no permit needed, but compliance required)`,
+        reasoning: `${dustRule} applies to ANY earth-moving activity. If ≥50 acres, a large operation notification is required. All projects must implement dust control measures.`,
         estimated_timeline_weeks: 0,
         estimated_cost: "$500 - $2,000 (dust control measures)",
-        forms: ["Rule 403 Dust Control Plan", "Large Operation Notification (if ≥50 acres)"],
+        forms: [`${dustRule} Dust Control Plan`, "Large Operation Notification (if ≥50 acres)"],
       };
+    }
 
-    case "SCAQMD:toxic_air_contaminant":
+    case "VCAPCD:toxic_air_contaminant":
+    case "SCAQMD:toxic_air_contaminant": {
+      const tacRule = input.countyConfig?.airDistrict.rules.tac || "Rule 1401";
+      const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
+      const isVCAPCD = input.agency === "VCAPCD";
+      const tacForms = isVCAPCD
+        ? ["Health Risk Assessment", "VCAPCD Permit Application", "Emissions Inventory"]
+        : ["Health Risk Assessment", "Form 400-A", "AB 2588 Air Toxics Hot Spots inventory (if applicable)"];
       return {
         triggered: true,
-        rule_or_regulation: "SCAQMD Rule 1401 — New Source Review for Toxic Air Contaminants",
+        rule_or_regulation: `${airName} ${tacRule} — New Source Review for Toxic Air Contaminants`,
         threshold_value: "Any new or modified facility emitting a listed TAC (lead, hexavalent chromium, benzene, etc.)",
         project_value: "Facility may emit toxic air contaminants",
-        permit_required: "Health Risk Assessment (HRA) + Permit to Construct",
-        reasoning: "Rule 1401 requires a health risk assessment for any new or modified source of toxic air contaminants. Maximum Individual Cancer Risk must not exceed 10-in-a-million (1-in-a-million if within 1,000 ft of a school under Rule 1401.1).",
+        permit_required: `Health Risk Assessment (HRA) + ${isVCAPCD ? "Authority to Construct" : "Permit to Construct"}`,
+        reasoning: `${tacRule} requires a health risk assessment for any new or modified source of toxic air contaminants. Maximum Individual Cancer Risk must not exceed 10-in-a-million (1-in-a-million if within 1,000 ft of a school).`,
         estimated_timeline_weeks: 16,
         estimated_cost: "$10,000 - $50,000 (includes HRA)",
-        forms: ["Health Risk Assessment", "Form 400-A", "AB 2588 Air Toxics Hot Spots inventory (if applicable)"],
+        forms: tacForms,
       };
+    }
 
-    // ===== RWQCB =====
-    case "RWQCB:industrial_stormwater":
+    // ===== RWQCB (Region 4 / Region 3) =====
+    case "RWQCB-3:industrial_stormwater":
+    case "RWQCB:industrial_stormwater": {
       const igpSicRanges = [
         [2000, 3999], [4000, 4999], [5015, 5015], [5093, 5093],
         [4953, 4953], [5171, 5171],
@@ -85,8 +110,10 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
         estimated_cost: inIGPRange ? "$3,000 - $8,000/year" : "$0",
         forms: inIGPRange ? ["NOI via SMARTS", "Stormwater Pollution Prevention Plan (SWPPP)", "Monitoring Implementation Plan"] : [],
       };
+    }
 
-    case "RWQCB:construction_stormwater":
+    case "RWQCB-3:construction_stormwater":
+    case "RWQCB:construction_stormwater": {
       const acreage = input.disturbance_acres || 0;
       const triggered = acreage >= 1;
       return {
@@ -102,12 +129,15 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
         estimated_cost: triggered ? "$2,000 - $5,000" : "$0",
         forms: triggered ? ["NOI via SMARTS", "Construction SWPPP", "Rain Event Action Plan (REAP)", "NOT upon completion"] : [],
       };
+    }
 
-    // ===== SANITATION =====
-    case "Sanitation:wastewater_discharge":
+    // ===== Sanitation / VC Environmental Health =====
+    case "VC_EH:wastewater_discharge":
+    case "Sanitation:wastewater_discharge": {
+      const wwName = input.countyConfig?.wastewater.name || "LA County Sanitation Districts";
       return {
         triggered: input.discharges_to_sewer !== false,
-        rule_or_regulation: "LA County Sanitation Districts — Industrial Wastewater Discharge Permit (IWDP)",
+        rule_or_regulation: `${wwName} — Industrial Wastewater Discharge Permit (IWDP)`,
         threshold_value: "Any process wastewater discharged to the sanitary sewer system",
         project_value: input.discharges_to_sewer ? "Process wastewater discharge to sewer identified" : "No process wastewater discharge identified",
         permit_required: "Industrial Wastewater Discharge Permit (IWDP)",
@@ -116,6 +146,7 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
         estimated_cost: "$2,000 - $5,000/year",
         forms: ["IWDP Application", "Process flow diagram", "Wastewater characterization report"],
       };
+    }
 
     // ===== CDFW =====
     case "CDFW:streambed_alteration":
@@ -150,7 +181,9 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
       };
 
     // ===== FIRE / CUPA =====
-    case "Fire_CUPA:hazmat_storage":
+    case "VC_EH_CUPA:hazmat_storage":
+    case "Fire_CUPA:hazmat_storage": {
+      const cupaName = input.countyConfig?.fireCupa.name || "LA County Fire CUPA";
       return {
         triggered: input.stores_hazmat === true,
         rule_or_regulation: "CA Health & Safety Code §25500 et seq. — Hazardous Materials Business Plan (HMBP)",
@@ -158,13 +191,15 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
         project_value: input.stores_hazmat ? "Hazardous materials storage identified" : "No hazardous materials storage identified",
         permit_required: "Hazardous Materials Business Plan (HMBP) — filed via CERS",
         reasoning: input.stores_hazmat
-          ? "Facility stores hazardous materials above reporting thresholds. Must file HMBP through California Environmental Reporting System (CERS), maintain inventory, and submit to annual inspection by LA County Fire CUPA."
+          ? `Facility stores hazardous materials above reporting thresholds. Must file HMBP through California Environmental Reporting System (CERS), maintain inventory, and submit to annual inspection by ${cupaName}.`
           : "No hazardous materials storage identified above thresholds.",
         estimated_timeline_weeks: input.stores_hazmat ? 4 : 0,
         estimated_cost: input.stores_hazmat ? "$1,000 - $3,000/year" : "$0",
         forms: input.stores_hazmat ? ["HMBP via CERS", "Hazardous Materials Inventory", "Emergency Response Plan", "Site Map"] : [],
       };
+    }
 
+    case "VC_EH_CUPA:hazwaste_generator":
     case "Fire_CUPA:hazwaste_generator":
       return {
         triggered: input.stores_hazmat === true,

@@ -1,8 +1,27 @@
 import OpenAI from "openai";
-import { REGULATIONS_KNOWLEDGE_BASE } from "../regulations";
+import { CountyConfig, CityConfig } from "../types";
 
-export const PERMIT_REASONER_SYSTEM_PROMPT = `You are an expert environmental permit analyst for Los Angeles County, California.
-You have received a classified project. For EACH of the 6 regulatory agencies below,
+export function getPermitReasonerSystemPrompt(countyConfig: CountyConfig, cityConfig?: CityConfig): string {
+  let agencyList = `Agencies to evaluate (in order):
+1. ${countyConfig.airDistrict.name} (air permits) — code: ${countyConfig.airDistrict.code}
+2. ${countyConfig.waterBoard.name} (water/stormwater permits) — code: ${countyConfig.waterBoard.code}
+3. ${countyConfig.wastewater.name} (sewer discharge permits) — code: ${countyConfig.wastewater.code}
+4. CEQA Lead Agency (environmental review) — code: CEQA
+5. CDFW + US Army Corps (waterway permits) — code: CDFW_USACE
+6. ${countyConfig.fireCupa.name} (hazardous materials) — code: ${countyConfig.fireCupa.code}`;
+
+  if (cityConfig) {
+    agencyList += `
+7. ${cityConfig.buildingDept.name} (building permit, plan check) — code: Building
+8. ${cityConfig.planningDept.name} (zoning, use permits) — code: Planning
+9. ${cityConfig.fireDept.name} (fire plan check, sprinklers) — code: Fire
+10. ${cityConfig.publicWorks.name} (grading, encroachment) — code: PublicWorks`;
+  }
+
+  const agencyCount = cityConfig ? 10 : 6;
+
+  return `You are an expert environmental permit analyst for ${countyConfig.name}, California.
+You have received a classified project. For EACH of the ${agencyCount} regulatory agencies below,
 you must REASON through whether their permits are required.
 
 Use the ReAct pattern:
@@ -11,25 +30,19 @@ Use the ReAct pattern:
 - OBSERVATION: Analyze the tool result
 - THOUGHT: Draw a conclusion and move to the next agency
 
-Agencies to evaluate (in order):
-1. South Coast AQMD (air permits) — code: SCAQMD
-2. LA RWQCB Region 4 (water/stormwater permits) — code: RWQCB
-3. LA County Sanitation Districts (sewer discharge permits) — code: Sanitation
-4. CEQA Lead Agency (environmental review) — code: CEQA
-5. CDFW + US Army Corps (waterway permits) — code: CDFW_USACE
-6. LA County Fire / CUPA (hazardous materials) — code: Fire_CUPA
+${agencyList}
 
 For each agency, output your reasoning chain AND your permit determination.
 Be explicit about WHY each permit is or isn't required — cite the specific rule, threshold, or SIC code trigger.
 
 IMPORTANT: Call the threshold_check and ceqa_exemption_check tools to verify your reasoning. Do not skip tool calls.
 
-After completing analysis for all 6 agencies, output a JSON object with this structure:
+After completing analysis for all ${agencyCount} agencies, output a JSON object with this structure:
 {
   "agency_analyses": [
     {
       "agency": "Full agency name",
-      "agency_code": "SCAQMD",
+      "agency_code": "agency code",
       "reasoning_chain": [
         { "type": "thought", "content": "..." },
         { "type": "action", "content": "Calling threshold_check for..." },
@@ -52,7 +65,8 @@ After completing analysis for all 6 agencies, output a JSON object with this str
   ]
 }
 
-${REGULATIONS_KNOWLEDGE_BASE}`;
+${countyConfig.regulationsKB}`;
+}
 
 export const PERMIT_REASONER_TOOLS: OpenAI.ChatCompletionTool[] = [
   {
@@ -88,7 +102,7 @@ export const PERMIT_REASONER_TOOLS: OpenAI.ChatCompletionTool[] = [
         properties: {
           agency: {
             type: "string",
-            enum: ["SCAQMD", "RWQCB", "Sanitation", "CDFW", "USACE", "Fire_CUPA"],
+            enum: ["SCAQMD", "VCAPCD", "RWQCB", "RWQCB-3", "Sanitation", "VC_EH", "CDFW", "USACE", "Fire_CUPA", "VC_EH_CUPA"],
           },
           check_type: {
             type: "string",

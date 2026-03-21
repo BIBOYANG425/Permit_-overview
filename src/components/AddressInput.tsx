@@ -12,10 +12,14 @@ export default function AddressInput({
   value,
   onChange,
   isLoading,
+  onCountyDetected,
+  onCityDetected,
 }: {
   value: AddressData;
   onChange: (data: AddressData) => void;
   isLoading: boolean;
+  onCountyDetected?: (county: "la" | "ventura") => void;
+  onCityDetected?: (city: string | null) => void;
 }) {
   const [query, setQuery] = useState(value.address);
   const [suggestions, setSuggestions] = useState<
@@ -49,7 +53,7 @@ export default function AddressInput({
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?` +
           new URLSearchParams({
-            q: q + " Los Angeles County CA",
+            q: q + " Southern California",
             format: "json",
             limit: "5",
             countrycodes: "us",
@@ -84,6 +88,28 @@ export default function AddressInput({
     onChange({ address: s.display_name, lat, lng });
     setShowSuggestions(false);
     setSuggestions([]);
+
+    // Detect county — use word-boundary matching to avoid false positives
+    const lower = s.display_name.toLowerCase();
+    const venturaKeywords = ["oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark", "ojai", "santa paula", "fillmore", "port hueneme"];
+    const isVentura = venturaKeywords.some(kw => new RegExp(`\\b${kw}\\b`, "i").test(lower))
+      || /\bventura\s+county\b/i.test(lower)
+      || /\bventura\s*,/i.test(lower);
+    onCountyDetected?.(isVentura ? "ventura" : "la");
+
+    // Detect city — try structured address fields first, fallback to word-boundary match
+    const addrData = s as { address?: Record<string, string> };
+    const structuredCity = addrData.address?.city || addrData.address?.town || addrData.address?.village || null;
+    const cities = ["torrance", "pasadena", "long beach", "glendale", "carson", "oxnard", "thousand oaks", "ventura"];
+    let detectedCity: string | null = null;
+    if (structuredCity) {
+      const normalizedStructured = structuredCity.toLowerCase();
+      detectedCity = cities.find(c => normalizedStructured === c || (c === "ventura" && normalizedStructured === "san buenaventura")) || null;
+    }
+    if (!detectedCity) {
+      detectedCity = cities.find(c => new RegExp(`\\b${c}\\b`, "i").test(lower)) || null;
+    }
+    onCityDetected?.(detectedCity);
   };
 
   const mapUrl =

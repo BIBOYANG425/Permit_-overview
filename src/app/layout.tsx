@@ -14,9 +14,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LA County Permit Navigator | AI-Powered Environmental Permit Analysis",
+  title: "SoCal Permit Navigator | AI-Powered Environmental Permit Analysis",
   description:
-    "Multi-agent AI system powered by NVIDIA Nemotron that determines which environmental permits you need across 6+ LA County agencies.",
+    "Multi-agent AI system powered by NVIDIA Nemotron that determines which environmental permits you need across LA County and Ventura County agencies.",
 };
 
 export default function RootLayout({

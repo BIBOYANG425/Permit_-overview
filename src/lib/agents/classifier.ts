@@ -1,14 +1,22 @@
 import OpenAI from "openai";
+import { CountyConfig, CityConfig } from "../types";
 
-export const CLASSIFIER_SYSTEM_PROMPT = `You are an expert project classifier for LA County environmental permitting.
+export function getClassifierSystemPrompt(countyConfig: CountyConfig): string {
+  return `You are an expert project classifier for ${countyConfig.name} environmental permitting.
 Given a project description, use your tools to:
 1. REASON about what type of project this is
 2. CALL sic_lookup to determine the SIC code
 3. CALL school_proximity_check if any schools or educational facilities are mentioned
 4. CALL waterway_proximity_check if any water features, channels, or drainage are mentioned
 5. OBSERVE the results and synthesize a classification
+6. Identify the city from the address for city-level permit determination
+
+The air quality district for this county is: ${countyConfig.airDistrict.name}
+The water board for this county is: ${countyConfig.waterBoard.name}
 
 Think step by step. Explain your reasoning before each tool call.
+
+Also identify the city jurisdiction from the address if possible. This is important for determining city-level permits (building, zoning, fire, grading).
 
 After using all relevant tools, provide your final classification as a JSON object with this structure:
 {
@@ -23,70 +31,75 @@ After using all relevant tools, provide your final classification as a JSON obje
     "involves_hazmat": boolean,
     "location_type": "Urbanized/Rural/Suburban",
     "waterway_name": "name or null",
-    "school_distance_ft": number or null
+    "school_distance_ft": number or null,
+    "county": "${countyConfig.id}",
+    "city": "detected city name or null"
   }
 }
 
 IMPORTANT: You MUST call at least the sic_lookup tool. Call waterway_proximity_check and school_proximity_check if there's any indication of nearby water or schools in the description. Always err on the side of checking rather than assuming.`;
+}
 
-export const CLASSIFIER_TOOLS: OpenAI.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "sic_lookup",
-      description:
-        "Look up the most appropriate SIC code for a project based on its description. Returns the 4-digit SIC code and whether it falls in a regulated category for SCAQMD or RWQCB Industrial General Permit.",
-      parameters: {
-        type: "object",
-        properties: {
-          project_type: {
-            type: "string",
-            description: "Brief description of the primary business activity",
+export function getClassifierTools(countyConfig: CountyConfig): OpenAI.ChatCompletionTool[] {
+  return [
+    {
+      type: "function",
+      function: {
+        name: "sic_lookup",
+        description:
+          `Look up the most appropriate SIC code for a project based on its description. Returns the 4-digit SIC code and whether it falls in a regulated category for ${countyConfig.airDistrict.name} or ${countyConfig.waterBoard.name} Industrial General Permit.`,
+        parameters: {
+          type: "object",
+          properties: {
+            project_type: {
+              type: "string",
+              description: "Brief description of the primary business activity",
+            },
+            has_manufacturing: { type: "boolean" },
+            has_chemical_processes: { type: "boolean" },
           },
-          has_manufacturing: { type: "boolean" },
-          has_chemical_processes: { type: "boolean" },
+          required: ["project_type"],
         },
-        required: ["project_type"],
       },
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "waterway_proximity_check",
-      description:
-        "Check if a project location is near any of LA County's 303(d) impaired waterbodies. Returns the nearest waterbody, its impairments, and whether additional stormwater monitoring is required.",
-      parameters: {
-        type: "object",
-        properties: {
-          location_description: {
-            type: "string",
-            description: "Description of project location including any nearby water features, channels, or drainage",
+    {
+      type: "function",
+      function: {
+        name: "waterway_proximity_check",
+        description:
+          `Check if a project location is near any of ${countyConfig.name}'s 303(d) impaired waterbodies. Returns the nearest waterbody, its impairments, and whether additional stormwater monitoring is required.`,
+        parameters: {
+          type: "object",
+          properties: {
+            location_description: {
+              type: "string",
+              description: "Description of project location including any nearby water features, channels, or drainage",
+            },
+            area_of_county: {
+              type: "string",
+              description: `General area (e.g., ${countyConfig.locationAreas.join(", ")})`,
+            },
           },
-          area_of_county: {
-            type: "string",
-            description: "General area (e.g., South Bay, San Fernando Valley, Downtown, Long Beach, etc.)",
-          },
+          required: ["location_description"],
         },
-        required: ["location_description"],
       },
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "school_proximity_check",
-      description:
-        "Check if the project site is within 1,000 feet of a school or early learning center, which triggers SCAQMD Rule 1401.1 stricter toxic air contaminant limits.",
-      parameters: {
-        type: "object",
-        properties: {
-          location_description: { type: "string" },
-          mentions_school_nearby: { type: "boolean" },
-          distance_if_known_ft: { type: "number" },
+    {
+      type: "function",
+      function: {
+        name: "school_proximity_check",
+        description:
+          `Check if the project site is within 1,000 feet of a school or early learning center, which triggers ${countyConfig.airDistrict.name} stricter toxic air contaminant limits.`,
+        parameters: {
+          type: "object",
+          properties: {
+            location_description: { type: "string" },
+            mentions_school_nearby: { type: "boolean" },
+            distance_if_known_ft: { type: "number" },
+          },
+          required: ["location_description"],
         },
-        required: ["location_description"],
       },
     },
-  },
-];
+  ];
+}

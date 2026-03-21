@@ -1,27 +1,32 @@
 import { MODELS, callNemotronWithMessages } from "@/lib/nim-client";
-import { CLASSIFIER_SYSTEM_PROMPT, CLASSIFIER_TOOLS } from "@/lib/agents/classifier";
-import { SYNTHESIZER_SYSTEM_PROMPT } from "@/lib/agents/synthesizer";
+import { getClassifierSystemPrompt, getClassifierTools } from "@/lib/agents/classifier";
+import { getPermitReasonerSystemPrompt, PERMIT_REASONER_TOOLS } from "@/lib/agents/permit-reasoner";
+import { getSynthesizerSystemPrompt } from "@/lib/agents/synthesizer";
+import { getCountyConfig } from "@/lib/config/counties";
+import { getCityConfig, detectCityFromAddress } from "@/lib/config/cities";
 import { sicLookup } from "@/lib/tools/sic-lookup";
 import { waterwayCheck } from "@/lib/tools/waterway-check";
 import { schoolProximityCheck } from "@/lib/tools/school-proximity";
 import { ceqaExemptionCheck } from "@/lib/tools/ceqa-exemption-check";
 import { thresholdCheck } from "@/lib/tools/threshold-check";
+import { fireReviewCheck } from "@/lib/tools/fire-review-check";
+import { cityPermitCheck } from "@/lib/tools/city-permit-check";
 import { dependencyLookup } from "@/lib/tools/timeline-calculator";
-import { AgentEvent } from "@/lib/types";
-import { REGULATIONS_KNOWLEDGE_BASE } from "@/lib/regulations";
+import { AgentEvent, CountyConfig, CityConfig } from "@/lib/types";
+import { isValidCountyId } from "@/lib/config/counties";
 import OpenAI from "openai";
 
 // ── Tool executor ──
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function executeToolLocally(toolName: string, args: Record<string, unknown>): unknown {
+function executeToolLocally(toolName: string, args: Record<string, unknown>, countyConfig?: CountyConfig): unknown {
   const a = args as any;
   switch (toolName) {
     case "sic_lookup":
       return sicLookup(a);
     case "waterway_proximity_check":
-      return waterwayCheck(a);
+      return waterwayCheck({ ...a, countyConfig });
     case "school_proximity_check":
-      return schoolProximityCheck(a);
+      return schoolProximityCheck({ ...a, countyConfig });
     case "ceqa_exemption_check":
       return ceqaExemptionCheck(a);
     case "threshold_check":
@@ -58,7 +63,8 @@ async function runAgentLoop(
   tools: OpenAI.ChatCompletionTool[],
   agentName: string,
   send: (event: AgentEvent) => void,
-  maxIterations: number = 5
+  maxIterations: number = 5,
+  countyConfig?: CountyConfig
 ): Promise<unknown> {
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -98,7 +104,7 @@ async function runAgentLoop(
 
         send({ type: "tool_call", agent: agentName, tool: fnName, input: parsedArgs });
 
-        const toolResult = executeToolLocally(fnName, parsedArgs);
+        const toolResult = executeToolLocally(fnName, parsedArgs, countyConfig);
 
         send({ type: "tool_result", agent: agentName, tool: fnName, output: toolResult as Record<string, unknown> });
 
@@ -124,54 +130,96 @@ async function runAgentLoop(
 }
 
 // ── Pre-compute all tool results after classification (eliminates Agent 2 tool-call round-trips) ──
-function preComputeToolResults(classification: Record<string, unknown>) {
+function preComputeToolResults(classification: Record<string, unknown>, countyConfig: CountyConfig, cityConfig: CityConfig) {
   const c = (classification as { classification?: Record<string, unknown> })?.classification || classification;
   const sicCode = (c.sic_code as string) || "9999";
   const acres = (c.estimated_disturbance_acres as number) || 0;
   const nearWaterway = (c.near_waterway as boolean) || false;
   const involvesHazmat = (c.involves_hazmat as boolean) || false;
 
+  const airAgency = countyConfig.airDistrict.code as any;
+  const waterAgency = countyConfig.waterBoard.code as any;
+  const wastewaterAgency = countyConfig.wastewater.code as any;
+  const fireAgency = countyConfig.fireCupa.code as any;
+
+  // Extract building/occupancy data from classification if available
+  const buildingSqft = (c.building_sqft as number) || (c.buildingSizeSqft as number) || undefined;
+  const stories = (c.stories as number) || undefined;
+  const occupancyType = (c.occupancy_type as string) || (c.occupancyType as string) || undefined;
+  const isNewConstruction = (c.is_new_construction as boolean) ?? (c.isNewConstruction as boolean) ?? undefined;
+
   return {
-    scaqmd_air: thresholdCheck({ agency: "SCAQMD", check_type: "air_permit", sic_code: sicCode, has_emissions_equipment: true }),
-    scaqmd_dust: thresholdCheck({ agency: "SCAQMD", check_type: "fugitive_dust", disturbance_acres: acres }),
-    scaqmd_tac: thresholdCheck({ agency: "SCAQMD", check_type: "toxic_air_contaminant", sic_code: sicCode }),
-    rwqcb_igp: thresholdCheck({ agency: "RWQCB", check_type: "industrial_stormwater", sic_code: sicCode }),
-    rwqcb_cgp: thresholdCheck({ agency: "RWQCB", check_type: "construction_stormwater", disturbance_acres: acres }),
-    sanitation: thresholdCheck({ agency: "Sanitation", check_type: "wastewater_discharge", sic_code: sicCode, discharges_to_sewer: true }),
-    cdfw: thresholdCheck({ agency: "CDFW", check_type: "streambed_alteration", near_waterway: nearWaterway }),
-    usace: thresholdCheck({ agency: "USACE", check_type: "section_404", near_waterway: nearWaterway }),
-    fire_hazmat: thresholdCheck({ agency: "Fire_CUPA", check_type: "hazmat_storage", stores_hazmat: involvesHazmat }),
-    fire_hazwaste: thresholdCheck({ agency: "Fire_CUPA", check_type: "hazwaste_generator", stores_hazmat: involvesHazmat }),
+    air_permit: thresholdCheck({ agency: airAgency, check_type: "air_permit", sic_code: sicCode, has_emissions_equipment: true, countyConfig }),
+    dust: thresholdCheck({ agency: airAgency, check_type: "fugitive_dust", disturbance_acres: acres, countyConfig }),
+    tac: thresholdCheck({ agency: airAgency, check_type: "toxic_air_contaminant", sic_code: sicCode, countyConfig }),
+    igp: thresholdCheck({ agency: waterAgency, check_type: "industrial_stormwater", sic_code: sicCode, countyConfig }),
+    cgp: thresholdCheck({ agency: waterAgency, check_type: "construction_stormwater", disturbance_acres: acres, countyConfig }),
+    sanitation: thresholdCheck({ agency: wastewaterAgency, check_type: "wastewater_discharge", sic_code: sicCode, discharges_to_sewer: true, countyConfig }),
+    cdfw: thresholdCheck({ agency: "CDFW", check_type: "streambed_alteration", near_waterway: nearWaterway, countyConfig }),
+    usace: thresholdCheck({ agency: "USACE", check_type: "section_404", near_waterway: nearWaterway, countyConfig }),
+    fire_hazmat: thresholdCheck({ agency: fireAgency, check_type: "hazmat_storage", stores_hazmat: involvesHazmat, countyConfig }),
+    fire_hazwaste: thresholdCheck({ agency: fireAgency, check_type: "hazwaste_generator", stores_hazmat: involvesHazmat, countyConfig }),
     ceqa: ceqaExemptionCheck({
       project_type: (c.sic_description as string) || "",
       is_new_construction: true,
       in_urbanized_area: true,
       near_sensitive_environment: nearWaterway,
     }),
+    city_permits: cityPermitCheck({
+      projectType: (c.sic_description as string) || "",
+      buildingSizeSqft: buildingSqft,
+      isNewConstruction: isNewConstruction ?? true,
+      cityConfig,
+    }),
+    fire_review: fireReviewCheck({
+      projectType: (c.sic_description as string) || "",
+      buildingSizeSqft: buildingSqft,
+      stories,
+      occupancyType,
+      isNewConstruction: isNewConstruction ?? true,
+      cityConfig,
+    }),
   };
 }
 
-// ── Per-agency prompt (for parallel analysis) ──
-const AGENCY_GROUPS = [
-  {
-    name: "Air & Water",
-    agencies: ["South Coast AQMD (SCAQMD)", "LA RWQCB Region 4 (RWQCB)"],
-    toolKeys: ["scaqmd_air", "scaqmd_dust", "scaqmd_tac", "rwqcb_igp", "rwqcb_cgp"],
-  },
-  {
-    name: "Sanitation & CEQA",
-    agencies: ["LA County Sanitation Districts (Sanitation)", "CEQA Lead Agency (CEQA)"],
-    toolKeys: ["sanitation", "ceqa"],
-  },
-  {
-    name: "Waterways & HazMat",
-    agencies: ["CDFW + US Army Corps (CDFW_USACE)", "LA County Fire / CUPA (Fire_CUPA)"],
-    toolKeys: ["cdfw", "usace", "fire_hazmat", "fire_hazwaste"],
-  },
-];
+// ── Dynamic agency groups based on county/city config ──
+function getAgencyGroups(countyConfig: CountyConfig, cityConfig?: CityConfig) {
+  const groups = [
+    {
+      name: "Air & Water",
+      agencies: [`${countyConfig.airDistrict.name} (${countyConfig.airDistrict.code})`, `${countyConfig.waterBoard.name} (${countyConfig.waterBoard.code})`],
+      toolKeys: ["air_permit", "dust", "tac", "igp", "cgp"],
+    },
+    {
+      name: "Sanitation & CEQA",
+      agencies: [`${countyConfig.wastewater.name} (${countyConfig.wastewater.code})`, "CEQA Lead Agency (CEQA)"],
+      toolKeys: ["sanitation", "ceqa"],
+    },
+    {
+      name: "Waterways & HazMat",
+      agencies: ["CDFW + US Army Corps (CDFW_USACE)", `${countyConfig.fireCupa.name} (${countyConfig.fireCupa.code})`],
+      toolKeys: ["cdfw", "usace", "fire_hazmat", "fire_hazwaste"],
+    },
+  ];
+
+  if (cityConfig) {
+    groups.push({
+      name: "City Permits & Fire",
+      agencies: [
+        `${cityConfig.buildingDept.name} (Building)`,
+        `${cityConfig.planningDept.name} (Planning)`,
+        `${cityConfig.fireDept.name} (Fire)`,
+        `${cityConfig.publicWorks.name} (PublicWorks)`,
+      ],
+      toolKeys: ["city_permits", "fire_review"],
+    });
+  }
+
+  return groups;
+}
 
 function buildAgencyPrompt(
-  group: (typeof AGENCY_GROUPS)[number],
+  group: { name: string; agencies: string[]; toolKeys: string[] },
   projectDesc: string,
   classification: unknown,
   toolResults: Record<string, unknown>
@@ -205,12 +253,8 @@ Output JSON:
 }`;
 }
 
-const AGENCY_SYSTEM = `You are an expert LA County environmental permit analyst. You receive pre-computed threshold check results and must determine which permits are required. Be concise. Cite specific rules. Output valid JSON only.
-
-${REGULATIONS_KNOWLEDGE_BASE}`;
-
 export async function POST(req: Request) {
-  const { projectDescription } = await req.json();
+  const { projectDescription, county: countyParam, city: cityParam } = await req.json();
 
   if (!projectDescription || typeof projectDescription !== "string") {
     return new Response(JSON.stringify({ error: "Project description is required" }), {
@@ -231,33 +275,50 @@ export async function POST(req: Request) {
       };
 
       try {
+        // ===== Load county and city configs =====
+        const countyId = isValidCountyId(countyParam) ? countyParam : "la";
+        const countyConfig = getCountyConfig(countyId);
+        const rawCity = typeof cityParam === "string" ? cityParam.trim() : "";
+        const detectedCity = rawCity || detectCityFromAddress(projectDescription);
+        const cityConfig = detectedCity ? getCityConfig(detectedCity, countyId) : getCityConfig("", countyId);
+
         // ===== AGENT 1: CLASSIFIER (nano-9b, fast) =====
         send({ type: "agent_start", agent: "Project Classifier", model: MODELS.fast });
 
+        const classifierPrompt = getClassifierSystemPrompt(countyConfig);
+        const classifierTools = getClassifierTools(countyConfig);
+
         const classificationResult = await runAgentLoop(
           "fast",
-          CLASSIFIER_SYSTEM_PROMPT,
-          `Classify this project for LA County environmental permitting:\n\n${projectDescription}`,
-          CLASSIFIER_TOOLS,
+          classifierPrompt,
+          `Classify this project for ${countyConfig.name} environmental permitting:\n\n${projectDescription}`,
+          classifierTools,
           "Project Classifier",
           send,
-          4 // fewer iterations — classifier is simple
+          4, // fewer iterations — classifier is simple
+          countyConfig
         );
 
         send({ type: "agent_complete", agent: "Project Classifier", result: classificationResult as Record<string, unknown> });
 
         // ===== PRE-COMPUTE all tool results (instant, no API calls) =====
-        const toolResults = preComputeToolResults(classificationResult as Record<string, unknown>);
+        const toolResults = preComputeToolResults(classificationResult as Record<string, unknown>, countyConfig, cityConfig);
         send({
           type: "thought",
           agent: "Permit Reasoning Agent",
-          content: `Pre-computed ${Object.keys(toolResults).length} threshold checks across all agencies. Running parallel analysis...`,
+          content: `Pre-computed ${Object.keys(toolResults).length} threshold checks across all agencies including city permits. Running parallel analysis...`,
         });
 
-        // ===== AGENT 2: PARALLEL PERMIT ANALYSIS (3 concurrent calls to super-49b) =====
+        // ===== AGENT 2: PARALLEL PERMIT ANALYSIS (concurrent calls to super-49b) =====
         send({ type: "agent_start", agent: "Permit Reasoning Agent", model: MODELS.reasoning });
 
-        const agencyPromises = AGENCY_GROUPS.map(async (group) => {
+        const AGENCY_SYSTEM = `You are an expert ${countyConfig.name} environmental permit analyst. You receive pre-computed threshold check results and must determine which permits are required. Be concise. Cite specific rules. Output valid JSON only.
+
+${countyConfig.regulationsKB}`;
+
+        const agencyGroups = getAgencyGroups(countyConfig, cityConfig);
+
+        const agencyPromises = agencyGroups.map(async (group) => {
           const userMsg = buildAgencyPrompt(
             group,
             projectDescription,
@@ -281,29 +342,36 @@ export async function POST(req: Request) {
             send({ type: "thought", agent: "Permit Reasoning Agent", content: `${group.name} analysis complete.` });
           }
 
-          return extractJSON(content) as { agency_analyses?: unknown[] } | null;
+          const parsed = extractJSON(content) as { agency_analyses?: unknown[] } | null;
+          if (!parsed) {
+            send({ type: "thought", agent: "Permit Reasoning Agent", content: `Warning: Failed to parse ${group.name} analysis output. This group's results may be missing.` });
+          }
+          return { groupName: group.name, parsed };
         });
 
         const agencyResults = await Promise.all(agencyPromises);
 
-        // Merge all agency analyses
+        // Merge all agency analyses, warn about parse failures
+        const failedGroups = agencyResults.filter(r => !r.parsed).map(r => r.groupName);
         const allAnalyses = agencyResults.flatMap(
-          (r) => (r?.agency_analyses as unknown[]) || []
+          (r) => (r.parsed?.agency_analyses as unknown[]) || []
         );
 
-        const permitResult = { agency_analyses: allAnalyses };
+        const permitResult = { agency_analyses: allAnalyses, ...(failedGroups.length > 0 ? { parse_warnings: failedGroups } : {}) };
 
         send({ type: "agent_complete", agent: "Permit Reasoning Agent", result: permitResult as Record<string, unknown> });
 
         // ===== AGENT 3: SYNTHESIZER (nano-9b for speed — synthesis is simpler) =====
         send({ type: "agent_start", agent: "Synthesis Agent", model: MODELS.fast });
 
+        const synthesizerSystemPrompt = getSynthesizerSystemPrompt(countyConfig);
+
         let synthesisResult;
         try {
           const response = await callNemotronWithMessages(
             "fast",
             [
-              { role: "system", content: SYNTHESIZER_SYSTEM_PROMPT },
+              { role: "system", content: synthesizerSystemPrompt },
               {
                 role: "user",
                 content: `Create optimal permit filing sequence.\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
