@@ -236,16 +236,19 @@ function AgencyDonut({ permits }: { permits: { permit: PermitDetermination; agen
         </text>
       </svg>
       <div className="space-y-1">
-        {entries.map(([agency, count]) => (
+        {entries.map(([agency, count], i) => {
+          const color = AGENCY_COLORS[agency] || ["#94A3B8", "#64748B", "#475569"][i % 3];
+          return (
           <div key={agency} className="flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-sm"
-              style={{ backgroundColor: AGENCY_COLORS[agency] || "#94A3B8" }}
+              style={{ backgroundColor: color }}
             />
             <span className="text-xs text-slate-400 font-mono">{agency}</span>
             <span className="text-xs text-slate-500">{count} permit{count > 1 ? "s" : ""}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

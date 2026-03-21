@@ -257,17 +257,21 @@ export default function ReportView({ report, onClose }: { report: PermitReport; 
           <div>
             <span className="text-slate-500">To:</span>
             <div className="text-slate-300 mt-0.5">
-              {report.header?.to?.map((r, i) => (
-                <div key={i}>{r.name}{r.title ? `, ${r.title}` : ""} — {r.organization}</div>
-              )) || "Client"}
+              {report.header?.to && report.header.to.length > 0
+                ? report.header.to.map((r, i) => (
+                    <div key={i}>{r.name}{r.title ? `, ${r.title}` : ""} — {r.organization}</div>
+                  ))
+                : "Client"}
             </div>
           </div>
           <div>
             <span className="text-slate-500">From:</span>
             <div className="text-slate-300 mt-0.5">
-              {report.header?.from?.map((a, i) => (
-                <div key={i}>{a.name}{a.title ? `, ${a.title}` : ""} — {a.firm}</div>
-              )) || "SoCal Permit Navigator"}
+              {report.header?.from && report.header.from.length > 0
+                ? report.header.from.map((a, i) => (
+                    <div key={i}>{a.name}{a.title ? `, ${a.title}` : ""} — {a.firm}</div>
+                  ))
+                : "SoCal Permit Navigator"}
             </div>
           </div>
           <div>

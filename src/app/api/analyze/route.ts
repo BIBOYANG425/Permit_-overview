@@ -137,16 +137,24 @@ function preComputeToolResults(classification: Record<string, unknown>, countyCo
   const nearWaterway = (c.near_waterway as boolean) || false;
   const involvesHazmat = (c.involves_hazmat as boolean) || false;
 
-  const airAgency = countyConfig.airDistrict.code as any;
-  const waterAgency = countyConfig.waterBoard.code as any;
-  const wastewaterAgency = countyConfig.wastewater.code as any;
-  const fireAgency = countyConfig.fireCupa.code as any;
+  const airAgency = countyConfig.airDistrict.code;
+  const waterAgency = countyConfig.waterBoard.code;
+  const wastewaterAgency = countyConfig.wastewater.code;
+  const fireAgency = countyConfig.fireCupa.code;
 
   // Extract building/occupancy data from classification if available
-  const buildingSqft = (c.building_sqft as number) || (c.buildingSizeSqft as number) || undefined;
-  const stories = (c.stories as number) || undefined;
-  const occupancyType = (c.occupancy_type as string) || (c.occupancyType as string) || undefined;
-  const isNewConstruction = (c.is_new_construction as boolean) ?? (c.isNewConstruction as boolean) ?? undefined;
+  // Use null (not undefined) so downstream tools can distinguish "unknown" from "zero"
+  const buildingSqft = (c.building_sqft as number) || (c.buildingSizeSqft as number) || null;
+  const stories = (c.stories as number) || null;
+  const occupancyType = (c.occupancy_type as string) || (c.occupancyType as string) || null;
+  const isNewConstruction = (c.is_new_construction as boolean) ?? (c.isNewConstruction as boolean) ?? null;
+
+  // Warn about missing classification fields that affect city/fire permit accuracy
+  const missingFields: string[] = [];
+  if (buildingSqft === null) missingFields.push("building_sqft");
+  if (stories === null) missingFields.push("stories");
+  if (occupancyType === null) missingFields.push("occupancy_type");
+  if (isNewConstruction === null) missingFields.push("is_new_construction");
 
   return {
     air_permit: thresholdCheck({ agency: airAgency, check_type: "air_permit", sic_code: sicCode, has_emissions_equipment: true, countyConfig }),
@@ -168,7 +176,7 @@ function preComputeToolResults(classification: Record<string, unknown>, countyCo
     city_permits: cityPermitCheck({
       projectType: (c.sic_description as string) || "",
       buildingSizeSqft: buildingSqft,
-      isNewConstruction: isNewConstruction ?? true,
+      isNewConstruction: isNewConstruction,
       cityConfig,
     }),
     fire_review: fireReviewCheck({
@@ -176,9 +184,10 @@ function preComputeToolResults(classification: Record<string, unknown>, countyCo
       buildingSizeSqft: buildingSqft,
       stories,
       occupancyType,
-      isNewConstruction: isNewConstruction ?? true,
+      isNewConstruction: isNewConstruction,
       cityConfig,
     }),
+    ...(missingFields.length > 0 ? { missing_classification_fields: missingFields } : {}),
   };
 }
 

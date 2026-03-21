@@ -50,15 +50,27 @@ function extractJSON(text: string): unknown | null {
 }
 
 export async function POST(req: Request) {
-  const { analysis, projectDescription, address, county, city } = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-  if (!analysis || !projectDescription) {
+  const { analysis, projectDescription: rawDesc, address: rawAddr, county, city } = body;
+
+  if (!analysis || !rawDesc) {
     return new Response(JSON.stringify({ error: "Analysis data and project description are required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
 
+  const projectDescription = String(rawDesc);
+  const address = typeof rawAddr === "string" ? rawAddr : "";
   const countyId = isValidCountyId(county) ? county : "la";
   const countyConfig = getCountyConfig(countyId);
   const cityConfig = typeof city === "string" && city.trim() ? getCityConfig(city.trim(), countyId) : getCityConfig("", countyId);

@@ -2,9 +2,9 @@ import { CityConfig, CityPermitResult } from "../types";
 
 interface CityPermitInput {
   projectType: string;
-  buildingSizeSqft?: number;
+  buildingSizeSqft?: number | null;
   landUse?: string;
-  isNewConstruction: boolean;
+  isNewConstruction: boolean | null;
   earthworkCuYd?: number;
   needsSewerConnection?: boolean;
   cityConfig: CityConfig;
@@ -14,19 +14,23 @@ export function cityPermitCheck(input: CityPermitInput): CityPermitResult {
   const building = input.cityConfig.buildingDept;
   const planning = input.cityConfig.planningDept;
   const pw = input.cityConfig.publicWorks;
-  const sqft = input.buildingSizeSqft || 0;
+  // Treat null sqft as unknown (assume non-zero to avoid silently skipping permits)
+  const sqftUnknown = input.buildingSizeSqft === null || input.buildingSizeSqft === undefined;
+  const sqft = input.buildingSizeSqft ?? 0;
   const earthwork = input.earthworkCuYd || 0;
   const projectLower = input.projectType.toLowerCase();
   const forms: string[] = [];
+  // Treat null isNewConstruction as unknown — conservatively assume true
+  const isNewConstruction = input.isNewConstruction ?? true;
 
   // Building permit
-  const isMinor = !input.isNewConstruction && sqft <= 500;
+  const isMinor = !isNewConstruction && sqft <= 500 && !sqftUnknown;
   const buildingPermitRequired = !isMinor;
   let buildingPermitType: "over-the-counter" | "plan-check" | "not-required" = "not-required";
 
   if (buildingPermitRequired) {
     // Over-the-counter for small alterations, plan-check for everything else
-    const isSmallAlteration = !input.isNewConstruction && sqft <= 2000 &&
+    const isSmallAlteration = !isNewConstruction && sqft <= 2000 &&
       !["commercial", "industrial", "manufacturing"].some(kw => projectLower.includes(kw));
     buildingPermitType = isSmallAlteration ? "over-the-counter" : "plan-check";
     forms.push(...building.forms);
@@ -38,7 +42,7 @@ export function cityPermitCheck(input: CityPermitInput): CityPermitResult {
   const isUseChange = projectLower.includes("conversion") || projectLower.includes("change of use") || projectLower.includes("adaptive reuse");
   const isLargeProject = sqft >= planning.siteReviewThresholdSqft;
   const zoningClearanceRequired = planning.usePermitRequired && (
-    input.isNewConstruction || isUseChange || isLargeProject
+    isNewConstruction || isUseChange || isLargeProject
   );
 
   let zoningReason = "Standard use within existing zoning — no clearance required";
@@ -61,13 +65,13 @@ export function cityPermitCheck(input: CityPermitInput): CityPermitResult {
 
   // Public works permits
   const publicWorksPermits: string[] = [];
-  if (pw.encroachmentPermit && (input.isNewConstruction || isLargeProject)) {
+  if (pw.encroachmentPermit && (isNewConstruction || isLargeProject)) {
     publicWorksPermits.push("Encroachment Permit (for work in public right-of-way)");
   }
-  if (pw.sewerConnection && (input.isNewConstruction || input.needsSewerConnection)) {
+  if (pw.sewerConnection && (isNewConstruction || input.needsSewerConnection)) {
     publicWorksPermits.push("Sewer Connection Permit");
   }
-  if (input.isNewConstruction) {
+  if (isNewConstruction) {
     publicWorksPermits.push("Water Connection Permit");
   }
 

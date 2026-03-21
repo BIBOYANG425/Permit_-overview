@@ -221,7 +221,7 @@ export function buildGuidedDescription(answers: GuidedAnswers): string {
   if (answers.projectType) parts.push(`Project type: ${answers.projectType}.`);
   if (answers.locationArea) parts.push(`Location: ${answers.locationArea}.`);
   if (answers.siteSize) parts.push(`Site/building size: ${answers.siteSize}.`);
-  if (answers.isNewConstruction) parts.push(`Construction type: ${answers.isNewConstruction}.`);
+  if (answers.isNewConstruction) parts.push(`Project scope: ${answers.isNewConstruction}.`);
   if (answers.disturbanceAcres) parts.push(`Land disturbance: ${answers.disturbanceAcres} acres.`);
   if (answers.nearWaterway === "Yes" && answers.waterwayDetails) {
     parts.push(`Near waterway: ${answers.waterwayDetails}.`);

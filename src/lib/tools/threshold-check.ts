@@ -1,7 +1,7 @@
 import { CountyConfig } from "../types";
 
 interface ThresholdCheckInput {
-  agency: "SCAQMD" | "VCAPCD" | "RWQCB" | "RWQCB-3" | "Sanitation" | "VC_EH" | "CDFW" | "USACE" | "Fire_CUPA" | "VC_EH_CUPA";
+  agency: "SCAQMD" | "VCAPCD" | "RWQCB" | "RWQCB-3" | "Sanitation" | "VC_EH" | "CDFW" | "USACE" | "Fire_CUPA" | "VC_EH_CUPA" | (string & {});
   check_type: string;
   sic_code?: string;
   disturbance_acres?: number;

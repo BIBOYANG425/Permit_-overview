@@ -32,9 +32,11 @@ export function detectCountyFromAddress(address: string): CountyId {
 }
 
 export function detectCountyFromCoordinates(lat: number, lng: number): CountyId {
-  // Ventura County: lat ~34.05-34.5, lng -119.47 to -118.63
-  // Tighter bounds to exclude Malibu/Calabasas (LA County)
-  if (lat >= 34.05 && lat <= 34.5 && lng >= -119.47 && lng <= -118.63) return "ventura";
+  // Ventura County: lat ~34.05-34.5, lng -119.47 to -118.70
+  // Eastern boundary at -118.70 provides a safer margin to exclude Malibu/Calabasas (LA County)
+  // while still capturing western Ventura County communities like Thousand Oaks and Moorpark.
+  // The actual county line runs roughly along -118.66 but varies with terrain.
+  if (lat >= 34.05 && lat <= 34.5 && lng >= -119.47 && lng <= -118.70) return "ventura";
   return "la";
 }
 

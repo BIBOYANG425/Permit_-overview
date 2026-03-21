@@ -42,7 +42,10 @@ export function detectCityFromAddress(address: string): string | null {
     "oxnard", "ventura", "san buenaventura", "thousand oaks",
   ];
   for (const city of cities) {
-    if (lower.includes(city)) return city;
+    // Use word-boundary regex to avoid false positives (e.g., "Carson St" matching "Carson")
+    const escaped = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`\\b${escaped}\\b`, "i");
+    if (regex.test(lower)) return city;
   }
   return null;
 }

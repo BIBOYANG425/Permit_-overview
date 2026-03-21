@@ -1,4 +1,4 @@
-import { CountyConfig, CityConfig, PermitAnalysis, AgencyAnalysis } from "../types";
+import { CountyConfig, CityConfig, PermitAnalysis, AgencyAnalysis, SynthesisResult } from "../types";
 
 // Extract classification from potentially nested structure
 function getClassification(analysis: PermitAnalysis): Record<string, unknown> {
@@ -34,7 +34,7 @@ export function getHeaderPrompt(
 ): string {
   const c = getClassification(analysis);
   const cityName = cityConfig?.cityName || "Unincorporated " + countyConfig.name;
-  const synthesis = analysis.synthesis as unknown as Record<string, unknown> | undefined;
+  const synthesis = analysis.synthesis as SynthesisResult | undefined;
 
   return `You are an environmental compliance analyst. Generate the header, background, path_forward, and metadata for an Environmental Permit Applicability Review Memorandum.
 
@@ -48,7 +48,7 @@ Output ONLY a JSON object with these exact keys:
     "to": [{"name": "Facility Management", "organization": "...", "title": "..."}],
     "from": [{"name": "Environmental Compliance Team", "firm": "SoCal Permit Navigator", "title": "Senior Analyst"}],
     "subject": "Re: Environmental Permit Applicability Review — [facility description] at ${address}",
-    "date": "2026-03-21",
+    "date": "${new Date().toISOString().split("T")[0]}",
     "confidentiality_marking": "Confidential"
   },
   "background": {
@@ -69,7 +69,7 @@ Output ONLY a JSON object with these exact keys:
       "sic_description": "${c.sic_description || "Unknown"}",
       "operations_description": "..."
     },
-    "analysis_date": "2026-03-21",
+    "analysis_date": "${new Date().toISOString().split("T")[0]}",
     "data_gaps": [{"description": "...", "impacts_section": "...", "requested_from": "Client", "blocking": false}],
     "agencies_referenced": [{"name": "...", "abbreviation": "...", "jurisdiction": "..."}],
     "total_estimated_fees": "${synthesis?.cost_estimate_range || "Contact agencies"}"

@@ -2,19 +2,22 @@ import { CityConfig, FireReviewResult } from "../types";
 
 interface FireReviewInput {
   projectType: string;
-  occupancyType?: string;
-  buildingSizeSqft?: number;
-  stories?: number;
+  occupancyType?: string | null;
+  buildingSizeSqft?: number | null;
+  stories?: number | null;
   constructionType?: string;
-  isNewConstruction: boolean;
+  isNewConstruction: boolean | null;
   cityConfig: CityConfig;
 }
 
 export function fireReviewCheck(input: FireReviewInput): FireReviewResult {
   const fire = input.cityConfig.fireDept;
-  const sqft = input.buildingSizeSqft || 0;
-  const stories = input.stories || 1;
-  const occupancy = (input.occupancyType || "").toUpperCase();
+  // Treat null as unknown — use conservative defaults (non-zero) to avoid silently skipping checks
+  const sqft = input.buildingSizeSqft ?? 0;
+  const stories = input.stories ?? 1;
+  const occupancy = (input.occupancyType ?? "").toUpperCase();
+  // Treat null isNewConstruction as unknown — conservatively assume true
+  const isNewConstruction = input.isNewConstruction ?? true;
   const projectLower = input.projectType.toLowerCase();
   const requirements: string[] = [];
 
@@ -22,7 +25,7 @@ export function fireReviewCheck(input: FireReviewInput): FireReviewResult {
   // Required for all commercial, multi-family, industrial new construction
   const isCommercial = ["commercial", "industrial", "manufacturing", "warehouse", "restaurant", "retail", "office"].some(kw => projectLower.includes(kw));
   const isMultiFamily = ["apartment", "multi-family", "condo", "mixed-use", "residential development"].some(kw => projectLower.includes(kw));
-  const planCheckRequired = fire.planCheckRequired && (isCommercial || isMultiFamily || input.isNewConstruction);
+  const planCheckRequired = fire.planCheckRequired && (isCommercial || isMultiFamily || isNewConstruction);
 
   if (planCheckRequired) {
     requirements.push("Fire plan check review required before building permit issuance");
@@ -30,7 +33,7 @@ export function fireReviewCheck(input: FireReviewInput): FireReviewResult {
 
   // Sprinkler system required?
   // California Building Code: all new residential (CRC R313.1), commercial > threshold
-  const sprinklerRequired = input.isNewConstruction && (
+  const sprinklerRequired = isNewConstruction && (
     sqft >= fire.sprinklerThresholdSqft ||
     isMultiFamily ||
     stories >= 3 ||
