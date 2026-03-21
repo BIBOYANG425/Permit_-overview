@@ -10,7 +10,7 @@ interface SchoolProximityInput {
 interface SchoolProximityResult {
   near_school: boolean;
   distance_ft: number | null;
-  rule_1401_1_applies: boolean;
+  enhanced_tac_threshold_applies: boolean;
   threshold_description: string;
   reasoning: string;
 }
@@ -26,7 +26,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
     return {
       near_school: isNear,
       distance_ft: input.distance_if_known_ft,
-      rule_1401_1_applies: isNear,
+      enhanced_tac_threshold_applies: isNear,
       threshold_description: isNear
         ? `${airName} ${tacRule} applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)`
         : `Standard ${tacRule} threshold of 10-in-a-million applies`,
@@ -51,7 +51,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
     return {
       near_school: isNear,
       distance_ft: distance,
-      rule_1401_1_applies: isNear,
+      enhanced_tac_threshold_applies: isNear,
       threshold_description: isNear
         ? `${airName} ${tacRule} applies — maximum individual cancer risk threshold reduced to 1-in-a-million (from 10-in-a-million)`
         : `Standard ${tacRule} threshold of 10-in-a-million applies`,
@@ -63,7 +63,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
     return {
       near_school: true,
       distance_ft: null,
-      rule_1401_1_applies: true,
+      enhanced_tac_threshold_applies: true,
       threshold_description: `${airName} ${tacRule} likely applies — verify exact distance. Maximum individual cancer risk threshold may be reduced to 1-in-a-million.`,
       reasoning: "Location description suggests proximity to a school but exact distance unknown. Conservative determination: assume within 1,000 ft.",
     };
@@ -73,7 +73,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
     return {
       near_school: true,
       distance_ft: null,
-      rule_1401_1_applies: true,
+      enhanced_tac_threshold_applies: true,
       threshold_description: `School mentioned in project description — ${tacRule} screening required. Determine exact distance to confirm applicability.`,
       reasoning: `School is referenced in the project description. ${airName} requires distance verification for ${tacRule} applicability.`,
     };
@@ -82,7 +82,7 @@ export function schoolProximityCheck(input: SchoolProximityInput): SchoolProximi
   return {
     near_school: false,
     distance_ft: null,
-    rule_1401_1_applies: false,
+    enhanced_tac_threshold_applies: false,
     threshold_description: `No school proximity identified — standard ${tacRule} threshold of 10-in-a-million applies. Applicant should verify by checking ${airName}'s facility mapping tool.`,
     reasoning: "No school or educational facility detected in project description. Standard toxic air contaminant thresholds apply.",
   };

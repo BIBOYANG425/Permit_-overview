@@ -33,16 +33,21 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
     case "SCAQMD:air_permit": {
       const airRule = input.countyConfig?.airDistrict.rules.nsr || "Regulation XIII";
       const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
+      const isVCAPCD = input.agency === "VCAPCD";
+      const permitName = isVCAPCD ? "Authority to Construct (ATC) + Permit to Operate" : "Permit to Construct (Form 400-A) + Permit to Operate";
+      const permitForms = isVCAPCD
+        ? ["VCAPCD Permit Application", "Equipment List", "Emissions Calculations", "BACT Analysis (if applicable)"]
+        : ["Form 400-A (Application for Permit to Construct)", "BACT Analysis (if applicable)", "Health Risk Assessment (if TAC)"];
       return {
         triggered: input.has_emissions_equipment !== false,
-        rule_or_regulation: `${airName} ${airRule} — Permit to Construct / Operate`,
+        rule_or_regulation: `${airName} ${airRule} — ${isVCAPCD ? "Authority to Construct / Operate" : "Permit to Construct / Operate"}`,
         threshold_value: "Any equipment with potential air emissions",
         project_value: input.has_emissions_equipment ? "Equipment with air emissions identified" : "No emissions equipment identified",
-        permit_required: "Permit to Construct (Form 400-A) + Permit to Operate",
+        permit_required: permitName,
         reasoning: `${airName} requires permits for any equipment that may emit air contaminants, including boilers, generators, paint booths, ovens, soldering stations, and process equipment.`,
         estimated_timeline_weeks: 12,
         estimated_cost: "$5,000 - $25,000",
-        forms: ["Form 400-A (Application for Permit to Construct)", "BACT Analysis (if applicable)", "Health Risk Assessment (if TAC)"],
+        forms: permitForms,
       };
     }
 
@@ -67,16 +72,20 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
     case "SCAQMD:toxic_air_contaminant": {
       const tacRule = input.countyConfig?.airDistrict.rules.tac || "Rule 1401";
       const airName = input.countyConfig?.airDistrict.name || "SCAQMD";
+      const isVCAPCD = input.agency === "VCAPCD";
+      const tacForms = isVCAPCD
+        ? ["Health Risk Assessment", "VCAPCD Permit Application", "Emissions Inventory"]
+        : ["Health Risk Assessment", "Form 400-A", "AB 2588 Air Toxics Hot Spots inventory (if applicable)"];
       return {
         triggered: true,
         rule_or_regulation: `${airName} ${tacRule} — New Source Review for Toxic Air Contaminants`,
         threshold_value: "Any new or modified facility emitting a listed TAC (lead, hexavalent chromium, benzene, etc.)",
         project_value: "Facility may emit toxic air contaminants",
-        permit_required: "Health Risk Assessment (HRA) + Permit to Construct",
+        permit_required: `Health Risk Assessment (HRA) + ${isVCAPCD ? "Authority to Construct" : "Permit to Construct"}`,
         reasoning: `${tacRule} requires a health risk assessment for any new or modified source of toxic air contaminants. Maximum Individual Cancer Risk must not exceed 10-in-a-million (1-in-a-million if within 1,000 ft of a school).`,
         estimated_timeline_weeks: 16,
         estimated_cost: "$10,000 - $50,000 (includes HRA)",
-        forms: ["Health Risk Assessment", "Form 400-A", "AB 2588 Air Toxics Hot Spots inventory (if applicable)"],
+        forms: tacForms,
       };
     }
 

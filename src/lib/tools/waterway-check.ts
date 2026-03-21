@@ -3,7 +3,7 @@ import { CountyConfig, WaterbodyData } from "../types";
 interface WaterwayCheckInput {
   location_description: string;
   area_of_county?: string;
-  countyConfig?: CountyConfig;
+  countyConfig: CountyConfig;
 }
 
 interface WaterwayCheckResult {
@@ -20,8 +20,11 @@ export function waterwayCheck(input: WaterwayCheckInput): WaterwayCheckResult {
   const locLower = input.location_description.toLowerCase();
   const areaLower = (input.area_of_county || "").toLowerCase();
   const combined = `${locLower} ${areaLower}`;
-  const waterbodies = input.countyConfig?.waterbodies || [];
-  const boardName = input.countyConfig?.waterBoard.name || "RWQCB";
+  if (!input.countyConfig) {
+    throw new Error("countyConfig is required for waterway check");
+  }
+  const waterbodies = input.countyConfig.waterbodies;
+  const boardName = input.countyConfig.waterBoard.name;
 
   const waterKeywords = ["channel", "creek", "river", "stream", "wash", "drain", "waterway", "waterbody", "lake", "harbor", "bay", "ocean", "coast"];
   const mentionsWater = waterKeywords.some((kw) => combined.includes(kw));

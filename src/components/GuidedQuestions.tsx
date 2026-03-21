@@ -133,7 +133,9 @@ function getQuestions(countyId?: "la" | "ventura"): Question[] {
       label: "Is the site near any school or daycare?",
       type: "select",
       options: ["", "Yes", "No", "Not sure"],
-      helpText: "SCAQMD Rule 1401.1 applies within 1,000 ft of schools",
+      helpText: countyId === "ventura"
+        ? "VCAPCD Rule 26.11 applies within 1,000 ft of schools"
+        : "SCAQMD Rule 1401.1 applies within 1,000 ft of schools",
     },
     {
       key: "schoolDistance",

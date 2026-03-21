@@ -5,6 +5,24 @@ import ClassificationBanner from "./ClassificationBanner";
 import PermitCard from "./PermitCard";
 import TimelineView from "./TimelineView";
 
+const AGENCY_COLORS: Record<string, string> = {
+  SCAQMD: "#E8A838",
+  RWQCB: "#3B82F6",
+  "RWQCB-4": "#3B82F6",
+  Sanitation: "#10B981",
+  CEQA: "#A855F7",
+  CDFW_USACE: "#06B6D4",
+  Fire_CUPA: "#EF4444",
+  VCAPCD: "#F59E0B",
+  "RWQCB-3": "#2563EB",
+  VC_EH: "#059669",
+  VC_EH_CUPA: "#DC2626",
+  Building: "#8B5CF6",
+  Planning: "#EC4899",
+  Fire: "#F97316",
+  PublicWorks: "#14B8A6",
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getClassification(data: PermitAnalysis): any {
   const c = data.classification;
@@ -59,24 +77,6 @@ function CostBreakdownChart({ permits }: { permits: { permit: PermitDeterminatio
   const gap = 8;
   const svgHeight = items.length * (barHeight + gap) + 40;
 
-  const agencyColors: Record<string, string> = {
-    SCAQMD: "#E8A838",
-    RWQCB: "#3B82F6",
-    "RWQCB-4": "#3B82F6",
-    Sanitation: "#10B981",
-    CEQA: "#A855F7",
-    CDFW_USACE: "#06B6D4",
-    Fire_CUPA: "#EF4444",
-    VCAPCD: "#F59E0B",
-    "RWQCB-3": "#2563EB",
-    VC_EH: "#059669",
-    VC_EH_CUPA: "#DC2626",
-    Building: "#8B5CF6",
-    Planning: "#EC4899",
-    Fire: "#F97316",
-    PublicWorks: "#14B8A6",
-  };
-
   return (
     <div className="bg-[#0F1117] border border-slate-800 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
@@ -96,7 +96,7 @@ function CostBreakdownChart({ permits }: { permits: { permit: PermitDeterminatio
           const y = i * (barHeight + gap);
           const minW = maxVal > 0 ? (item.min / maxVal) * 350 : 0;
           const maxW = maxVal > 0 ? (item.max / maxVal) * 350 : 0;
-          const color = agencyColors[item.agency] || "#94A3B8";
+          const color = AGENCY_COLORS[item.agency] || "#94A3B8";
           return (
             <g key={i}>
               <text x="0" y={y + 12} fill="#94A3B8" fontSize="10" fontFamily="monospace">
@@ -197,24 +197,6 @@ function AgencyDonut({ permits }: { permits: { permit: PermitDetermination; agen
 
   const entries = Object.entries(agencyCounts);
   const total = permits.length;
-  const colors: Record<string, string> = {
-    SCAQMD: "#E8A838",
-    RWQCB: "#3B82F6",
-    "RWQCB-4": "#3B82F6",
-    Sanitation: "#10B981",
-    CEQA: "#A855F7",
-    CDFW_USACE: "#06B6D4",
-    Fire_CUPA: "#EF4444",
-    VCAPCD: "#F59E0B",
-    "RWQCB-3": "#2563EB",
-    VC_EH: "#059669",
-    VC_EH_CUPA: "#DC2626",
-    Building: "#8B5CF6",
-    Planning: "#EC4899",
-    Fire: "#F97316",
-    PublicWorks: "#14B8A6",
-  };
-
   let currentAngle = 0;
 
   return (
@@ -231,7 +213,7 @@ function AgencyDonut({ permits }: { permits: { permit: PermitDetermination; agen
           const y1 = 40 + 30 * Math.sin(startRad);
           const x2 = 40 + 30 * Math.cos(endRad);
           const y2 = 40 + 30 * Math.sin(endRad);
-          const color = colors[agency] || ["#94A3B8", "#64748B", "#475569"][i % 3];
+          const color = AGENCY_COLORS[agency] || ["#94A3B8", "#64748B", "#475569"][i % 3];
 
           if (entries.length === 1) {
             return <circle key={agency} cx="40" cy="40" r="30" fill="none" stroke={color} strokeWidth="12" />;
@@ -258,7 +240,7 @@ function AgencyDonut({ permits }: { permits: { permit: PermitDetermination; agen
           <div key={agency} className="flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-sm"
-              style={{ backgroundColor: colors[agency] || "#94A3B8" }}
+              style={{ backgroundColor: AGENCY_COLORS[agency] || "#94A3B8" }}
             />
             <span className="text-xs text-slate-400 font-mono">{agency}</span>
             <span className="text-xs text-slate-500">{count} permit{count > 1 ? "s" : ""}</span>

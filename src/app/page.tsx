@@ -160,6 +160,7 @@ export default function Home() {
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [report, setReport] = useState<PermitReport | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   // Check for ?demo= URL param on load
   useEffect(() => {
@@ -177,11 +178,13 @@ export default function Home() {
       setFreeText(scenario.description);
       setAddress(scenario.address);
       setGuidedAnswers({ ...INITIAL_ANSWERS, ...scenario.answers });
-      if (scenario.county) setCounty(scenario.county);
+      setCounty(scenario.county || "la");
+      setDetectedCity(null);
     }
 
     setEvents([]);
     setResults(null);
+    setReport(null);
     setIsRunning(true);
     setShowTrace(true);
 
@@ -232,7 +235,8 @@ export default function Home() {
     setFreeText(scenario.description);
     setAddress(scenario.address);
     setGuidedAnswers({ ...INITIAL_ANSWERS, ...scenario.answers });
-    if (scenario.county) setCounty(scenario.county);
+    setCounty(scenario.county || "la");
+    setDetectedCity(null);
   };
 
   const guidedText = buildGuidedDescription(guidedAnswers);
@@ -256,6 +260,7 @@ export default function Home() {
 
       setEvents([]);
       setResults(null);
+      setReport(null);
       setIsRunning(true);
       setShowTrace(true);
 
@@ -328,6 +333,7 @@ export default function Home() {
     if (!results || isGeneratingReport) return;
     setIsGeneratingReport(true);
     setReport(null);
+    setReportError(null);
 
     const parts: string[] = [];
     parts.push(`Project address: ${address.address}`);
@@ -335,6 +341,14 @@ export default function Home() {
     if (guidedText) parts.push(guidedText);
 
     try {
+      // Prefer county/city from analysis results (captured at analysis time) over live UI state
+      const classificationData = (results as unknown as Record<string, unknown>)?.classification;
+      const classObj = classificationData && typeof classificationData === "object" && "classification" in (classificationData as Record<string, unknown>)
+        ? (classificationData as Record<string, unknown>).classification as Record<string, unknown>
+        : classificationData as Record<string, unknown> | undefined;
+      const analysisCounty = (classObj?.county as string) || county;
+      const analysisCity = (classObj?.city as string) || detectedCity;
+
       const response = await fetch("/api/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -342,8 +356,8 @@ export default function Home() {
           analysis: results,
           projectDescription: parts.join("\n"),
           address: address.address,
-          county,
-          city: detectedCity,
+          county: analysisCounty,
+          city: analysisCity,
         }),
       });
 
@@ -354,6 +368,8 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let gotReport = false;
+      let gotError = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -369,14 +385,24 @@ export default function Home() {
             const event: AgentEvent = JSON.parse(trimmed.slice(6));
             if (event.type === "agent_complete" && event.result) {
               setReport(event.result as unknown as PermitReport);
+              gotReport = true;
             } else if (event.type === "final_result" && event.result) {
               setReport(event.result as unknown as PermitReport);
+              gotReport = true;
+            } else if (event.type === "error" && event.error) {
+              setReportError(event.error);
+              gotError = true;
             }
           } catch { /* skip */ }
         }
       }
+
+      if (!gotReport && !gotError) {
+        setReportError("Report generation completed but no report was produced. The AI model may have returned an incomplete response.");
+      }
     } catch (error) {
       console.error("Report generation failed:", error);
+      setReportError(error instanceof Error ? error.message : "Report generation failed. Please try again.");
     } finally {
       setIsGeneratingReport(false);
     }
@@ -567,6 +593,20 @@ export default function Home() {
                     </>
                   )}
                 </button>
+              )}
+
+              {/* Report Error */}
+              {reportError && !report && (
+                <div className="mt-3 bg-red-950/20 border border-red-900/30 rounded-lg px-4 py-3">
+                  <p className="text-sm text-red-400">{reportError}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setReportError(null); handleGenerateReport(); }}
+                    className="mt-2 text-xs text-red-300 underline hover:text-red-200"
+                  >
+                    Retry report generation
+                  </button>
+                </div>
               )}
 
               {/* Report View */}

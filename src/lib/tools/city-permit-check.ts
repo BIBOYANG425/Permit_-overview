@@ -71,16 +71,17 @@ export function cityPermitCheck(input: CityPermitInput): CityPermitResult {
     publicWorksPermits.push("Water Connection Permit");
   }
 
-  // Total fees
-  const totalEstimatedFees = buildingPermitRequired
-    ? `${building.fees} (building) + ${planning.fees} (planning)`
-    : planning.fees;
+  // Total fees — only include components that are triggered
+  const feeParts: string[] = [];
+  if (buildingPermitRequired) feeParts.push(`${building.fees} (building)`);
+  if (zoningClearanceRequired) feeParts.push(`${planning.fees} (planning)`);
+  const totalEstimatedFees = feeParts.length > 0 ? feeParts.join(" + ") : "$0";
 
   return {
     buildingPermitRequired,
     buildingPermitType,
     planCheckTimelineWeeks,
-    planCheckFees: building.fees,
+    planCheckFees: buildingPermitType === "plan-check" ? building.fees : "$0",
     zoningClearanceRequired,
     zoningReason,
     gradingPermitRequired,

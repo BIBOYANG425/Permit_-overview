@@ -102,7 +102,7 @@ export const PERMIT_REASONER_TOOLS: OpenAI.ChatCompletionTool[] = [
         properties: {
           agency: {
             type: "string",
-            enum: ["SCAQMD", "RWQCB", "Sanitation", "CDFW", "USACE", "Fire_CUPA"],
+            enum: ["SCAQMD", "VCAPCD", "RWQCB", "RWQCB-3", "Sanitation", "VC_EH", "CDFW", "USACE", "Fire_CUPA", "VC_EH_CUPA"],
           },
           check_type: {
             type: "string",

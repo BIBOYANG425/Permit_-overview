@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PermitReport, ReportMediaSection } from "@/lib/types";
 
 function StatusBadge({ status }: { status: string }) {
@@ -25,8 +25,12 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function MediaSectionCard({ section, index }: { section: ReportMediaSection; index: number }) {
-  const [expanded, setExpanded] = useState(false);
+function MediaSectionCard({ section, index, expandAll }: { section: ReportMediaSection; index: number; expandAll: boolean }) {
+  const [expanded, setExpanded] = useState(expandAll);
+
+  useEffect(() => {
+    setExpanded(expandAll);
+  }, [expandAll]);
   const det = section.applicability_analysis?.determination_status || "conditional";
 
   return (
@@ -317,7 +321,7 @@ export default function ReportView({ report, onClose }: { report: PermitReport; 
           </div>
           <div className="space-y-2">
             {report.media_sections.map((section, i) => (
-              <MediaSectionCard key={i} section={section} index={i} />
+              <MediaSectionCard key={i} section={section} index={i} expandAll={expandAll} />
             ))}
           </div>
         </div>

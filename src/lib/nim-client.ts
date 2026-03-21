@@ -43,6 +43,7 @@ export async function callNemotronWithMessages(
     tools?: OpenAI.ChatCompletionTool[];
     maxTokens?: number;
     temperature?: number;
+    jsonMode?: boolean;
   }
 ) {
   const response = await getClient(model).chat.completions.create({
@@ -53,6 +54,9 @@ export async function callNemotronWithMessages(
     max_tokens: options?.maxTokens ?? 4096,
     ...(options?.tools
       ? { tools: options.tools, tool_choice: "auto" as const }
+      : {}),
+    ...(options?.jsonMode
+      ? { response_format: { type: "json_object" as const } }
       : {}),
   });
   return response;

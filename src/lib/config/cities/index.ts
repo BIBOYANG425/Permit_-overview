@@ -29,7 +29,10 @@ const FALLBACK_CONFIGS: Record<CountyId, CityConfig> = {
 
 export function getCityConfig(cityName: string, countyId: CountyId): CityConfig {
   const key = cityName.toLowerCase().trim();
-  return CITY_REGISTRY[key] || FALLBACK_CONFIGS[countyId];
+  const config = CITY_REGISTRY[key];
+  // Only return the city config if it belongs to the requested county
+  if (config && config.county === countyId) return config;
+  return FALLBACK_CONFIGS[countyId];
 }
 
 export function detectCityFromAddress(address: string): string | null {

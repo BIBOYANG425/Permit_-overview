@@ -62,7 +62,7 @@ export function fireReviewCheck(input: FireReviewInput): FireReviewResult {
     } else if (isMultiFamily) {
       alarmReason = "Multi-family residential requires fire alarm system per CBC 907.2.9";
     } else if (sqft >= 10000) {
-      alarmReason = `Building size (${sqft.toLocaleString()} sqft) exceeds 10,000 sqft — fire alarm system recommended per CBC 907`;
+      alarmReason = `Building size (${sqft.toLocaleString()} sqft) exceeds 10,000 sqft — fire alarm system required per CBC 907`;
     }
     requirements.push(`Fire alarm system required: ${alarmReason}`);
   }

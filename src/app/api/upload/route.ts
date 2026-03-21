@@ -9,18 +9,26 @@ async function extractWithNvidiaOCR(buffer: Buffer, fileName: string): Promise<s
 
   try {
     const base64 = buffer.toString("base64");
-    const response = await fetch("https://ai.api.nvidia.com/v1/cv/nvidia/ocdrnet", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${NVIDIA_OCR_API_KEY}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({
-        image: base64,
-        render_label: false,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    let response: Response;
+    try {
+      response = await fetch("https://ai.api.nvidia.com/v1/cv/nvidia/ocdrnet", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${NVIDIA_OCR_API_KEY}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          image: base64,
+          render_label: false,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       console.error(`NVIDIA OCR error: ${response.status}`);
@@ -38,7 +46,7 @@ async function extractWithNvidiaOCR(buffer: Buffer, fileName: string): Promise<s
         .map((obj: { label: string }) => obj.label);
       return texts.join("\n");
     }
-    return JSON.stringify(data);
+    return "";
   } catch (error) {
     console.error("NVIDIA OCR failed:", error);
     return "";
@@ -158,7 +166,7 @@ export async function POST(req: Request) {
       } else {
         results.push({
           name: file.name,
-          text: "[Unsupported file format. Supported: PDF, TXT, MD, CSV, JSON, PNG, JPG, TIFF]",
+          text: "[Unsupported file format. Supported: PDF, TXT, MD, CSV, JSON, PNG, JPG, TIFF, BMP]",
         });
       }
     }

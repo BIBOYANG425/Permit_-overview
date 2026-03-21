@@ -12,7 +12,8 @@ import { thresholdCheck } from "@/lib/tools/threshold-check";
 import { fireReviewCheck } from "@/lib/tools/fire-review-check";
 import { cityPermitCheck } from "@/lib/tools/city-permit-check";
 import { dependencyLookup } from "@/lib/tools/timeline-calculator";
-import { AgentEvent, CountyId, CountyConfig, CityConfig } from "@/lib/types";
+import { AgentEvent, CountyConfig, CityConfig } from "@/lib/types";
+import { isValidCountyId } from "@/lib/config/counties";
 import OpenAI from "openai";
 
 // ── Tool executor ──
@@ -141,6 +142,12 @@ function preComputeToolResults(classification: Record<string, unknown>, countyCo
   const wastewaterAgency = countyConfig.wastewater.code as any;
   const fireAgency = countyConfig.fireCupa.code as any;
 
+  // Extract building/occupancy data from classification if available
+  const buildingSqft = (c.building_sqft as number) || (c.buildingSizeSqft as number) || undefined;
+  const stories = (c.stories as number) || undefined;
+  const occupancyType = (c.occupancy_type as string) || (c.occupancyType as string) || undefined;
+  const isNewConstruction = (c.is_new_construction as boolean) ?? (c.isNewConstruction as boolean) ?? undefined;
+
   return {
     air_permit: thresholdCheck({ agency: airAgency, check_type: "air_permit", sic_code: sicCode, has_emissions_equipment: true, countyConfig }),
     dust: thresholdCheck({ agency: airAgency, check_type: "fugitive_dust", disturbance_acres: acres, countyConfig }),
@@ -160,13 +167,16 @@ function preComputeToolResults(classification: Record<string, unknown>, countyCo
     }),
     city_permits: cityPermitCheck({
       projectType: (c.sic_description as string) || "",
-      buildingSizeSqft: 0,
-      isNewConstruction: true,
+      buildingSizeSqft: buildingSqft,
+      isNewConstruction: isNewConstruction ?? true,
       cityConfig,
     }),
     fire_review: fireReviewCheck({
       projectType: (c.sic_description as string) || "",
-      isNewConstruction: true,
+      buildingSizeSqft: buildingSqft,
+      stories,
+      occupancyType,
+      isNewConstruction: isNewConstruction ?? true,
       cityConfig,
     }),
   };
@@ -266,9 +276,10 @@ export async function POST(req: Request) {
 
       try {
         // ===== Load county and city configs =====
-        const countyId: CountyId = countyParam || "la";
+        const countyId = isValidCountyId(countyParam) ? countyParam : "la";
         const countyConfig = getCountyConfig(countyId);
-        const detectedCity = cityParam || detectCityFromAddress(projectDescription);
+        const rawCity = typeof cityParam === "string" ? cityParam.trim() : "";
+        const detectedCity = rawCity || detectCityFromAddress(projectDescription);
         const cityConfig = detectedCity ? getCityConfig(detectedCity, countyId) : getCityConfig("", countyId);
 
         // ===== AGENT 1: CLASSIFIER (nano-9b, fast) =====
@@ -331,17 +342,22 @@ ${countyConfig.regulationsKB}`;
             send({ type: "thought", agent: "Permit Reasoning Agent", content: `${group.name} analysis complete.` });
           }
 
-          return extractJSON(content) as { agency_analyses?: unknown[] } | null;
+          const parsed = extractJSON(content) as { agency_analyses?: unknown[] } | null;
+          if (!parsed) {
+            send({ type: "thought", agent: "Permit Reasoning Agent", content: `Warning: Failed to parse ${group.name} analysis output. This group's results may be missing.` });
+          }
+          return { groupName: group.name, parsed };
         });
 
         const agencyResults = await Promise.all(agencyPromises);
 
-        // Merge all agency analyses
+        // Merge all agency analyses, warn about parse failures
+        const failedGroups = agencyResults.filter(r => !r.parsed).map(r => r.groupName);
         const allAnalyses = agencyResults.flatMap(
-          (r) => (r?.agency_analyses as unknown[]) || []
+          (r) => (r.parsed?.agency_analyses as unknown[]) || []
         );
 
-        const permitResult = { agency_analyses: allAnalyses };
+        const permitResult = { agency_analyses: allAnalyses, ...(failedGroups.length > 0 ? { parse_warnings: failedGroups } : {}) };
 
         send({ type: "agent_complete", agent: "Permit Reasoning Agent", result: permitResult as Record<string, unknown> });
 

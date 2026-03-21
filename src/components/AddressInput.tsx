@@ -89,15 +89,26 @@ export default function AddressInput({
     setShowSuggestions(false);
     setSuggestions([]);
 
-    // Detect county
+    // Detect county — use word-boundary matching to avoid false positives
     const lower = s.display_name.toLowerCase();
-    const venturaKeywords = ["ventura", "oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark", "ojai", "santa paula", "fillmore", "port hueneme"];
-    const isVentura = venturaKeywords.some(kw => lower.includes(kw));
+    const venturaKeywords = ["oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark", "ojai", "santa paula", "fillmore", "port hueneme"];
+    const isVentura = venturaKeywords.some(kw => new RegExp(`\\b${kw}\\b`, "i").test(lower))
+      || /\bventura\s+county\b/i.test(lower)
+      || /\bventura\s*,/i.test(lower);
     onCountyDetected?.(isVentura ? "ventura" : "la");
 
-    // Detect city
-    const cities = ["torrance", "pasadena", "long beach", "glendale", "carson", "oxnard", "ventura", "san buenaventura", "thousand oaks"];
-    const detectedCity = cities.find(c => lower.includes(c)) || null;
+    // Detect city — try structured address fields first, fallback to word-boundary match
+    const addrData = s as { address?: Record<string, string> };
+    const structuredCity = addrData.address?.city || addrData.address?.town || addrData.address?.village || null;
+    const cities = ["torrance", "pasadena", "long beach", "glendale", "carson", "oxnard", "thousand oaks", "ventura"];
+    let detectedCity: string | null = null;
+    if (structuredCity) {
+      const normalizedStructured = structuredCity.toLowerCase();
+      detectedCity = cities.find(c => normalizedStructured === c || (c === "ventura" && normalizedStructured === "san buenaventura")) || null;
+    }
+    if (!detectedCity) {
+      detectedCity = cities.find(c => new RegExp(`\\b${c}\\b`, "i").test(lower)) || null;
+    }
     onCityDetected?.(detectedCity);
   };
 
