@@ -227,26 +227,48 @@ function getAgencyGroups(countyConfig: CountyConfig, cityConfig?: CityConfig) {
   return groups;
 }
 
+// Split projectDescription into core project text and uploaded document context
+function splitDocumentContext(projectDesc: string): { coreProject: string; documentContext: string } {
+  const match = projectDesc.match(/(?:\r?\n|^)\s*Extracted from uploaded documents:/);
+  if (!match || match.index === undefined) {
+    return { coreProject: projectDesc, documentContext: "" };
+  }
+  return {
+    coreProject: projectDesc.slice(0, match.index),
+    documentContext: projectDesc.slice(match.index),
+  };
+}
+
 function buildAgencyPrompt(
   group: { name: string; agencies: string[]; toolKeys: string[] },
-  projectDesc: string,
+  coreProject: string,
   classification: unknown,
-  toolResults: Record<string, unknown>
+  toolResults: Record<string, unknown>,
+  documentContext: string
 ): string {
   const relevantResults = Object.fromEntries(
     group.toolKeys.map((k) => [k, toolResults[k]])
   );
 
-  return `Analyze permit requirements for ONLY these agencies: ${group.agencies.join(", ")}
+  let prompt = `Analyze permit requirements for ONLY these agencies: ${group.agencies.join(", ")}
 
-Project: ${projectDesc}
+Project: ${coreProject}
 
 Classification: ${JSON.stringify(classification, null, 2)}
 
 Pre-computed threshold results (already evaluated — use these directly, do NOT re-check):
-${JSON.stringify(relevantResults, null, 2)}
+${JSON.stringify(relevantResults, null, 2)}`;
 
-Based on these threshold results, determine which permits are required for each agency.
+  if (documentContext) {
+    prompt += `
+
+UPLOADED DOCUMENT CONTEXT (use these details to inform your analysis — they may contain chemical inventories, equipment specs, process descriptions, or site plans that affect permit requirements):
+${documentContext}`;
+  }
+
+  prompt += `
+
+Based on these threshold results${documentContext ? " and uploaded document details" : ""}, determine which permits are required for each agency.
 For each permit, state: permit_name, required (boolean), confidence, reason (cite specific rule), timeline_weeks, forms, priority, estimated_cost.
 
 Output JSON:
@@ -260,6 +282,8 @@ Output JSON:
     }
   ]
 }`;
+
+  return prompt;
 }
 
 export async function POST(req: Request) {
@@ -327,12 +351,16 @@ ${countyConfig.regulationsKB}`;
 
         const agencyGroups = getAgencyGroups(countyConfig, cityConfig);
 
+        // Split document context once, reuse across all agency prompts
+        const { coreProject, documentContext } = splitDocumentContext(projectDescription);
+
         const agencyPromises = agencyGroups.map(async (group) => {
           const userMsg = buildAgencyPrompt(
             group,
-            projectDescription,
+            coreProject,
             classificationResult,
-            toolResults as Record<string, unknown>
+            toolResults as Record<string, unknown>,
+            documentContext
           );
 
           send({ type: "thought", agent: "Permit Reasoning Agent", content: `Analyzing ${group.name}...` });
@@ -383,7 +411,7 @@ ${countyConfig.regulationsKB}`;
               { role: "system", content: synthesizerSystemPrompt },
               {
                 role: "user",
-                content: `Create optimal permit filing sequence.\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
+                content: `Create optimal permit filing sequence.\n\nProject: ${coreProject}\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
               },
             ],
             { maxTokens: 2048, temperature: 0.2 }
