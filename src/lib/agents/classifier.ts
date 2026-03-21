@@ -18,6 +18,14 @@ Think step by step. Explain your reasoning before each tool call.
 
 Also identify the city jurisdiction from the address if possible. This is important for determining city-level permits (building, zoning, fire, grading).
 
+If the project description includes content extracted from uploaded documents (plans, permits, reports, SDS sheets, etc.), pay special attention to:
+- Chemical names, CAS numbers, and storage quantities (triggers hazmat thresholds)
+- Equipment specs: boilers, paint booths, generators, tanks (triggers air permits)
+- Process descriptions: coating, plating, printing, welding (triggers source-specific rules)
+- Discharge volumes or wastewater descriptions (triggers pretreatment)
+- Site acreage, grading volumes, impervious surface area (triggers stormwater)
+- Any referenced permit numbers or regulatory citations
+
 After using all relevant tools, provide your final classification as a JSON object with this structure:
 {
   "reasoning_trace": ["step 1 description...", "step 2 description..."],
@@ -33,7 +41,8 @@ After using all relevant tools, provide your final classification as a JSON obje
     "waterway_name": "name or null",
     "school_distance_ft": number or null,
     "county": "${countyConfig.id}",
-    "city": "detected city name or null"
+    "city": "detected city name or null",
+    "document_extracted_details": "Summary of key regulatory details found in uploaded documents, or null if no documents uploaded"
   }
 }
 

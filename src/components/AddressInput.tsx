@@ -30,6 +30,13 @@ export default function AddressInput({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Sync internal query when parent sets address externally (e.g. loading an example scenario)
+  useEffect(() => {
+    if (value.address !== query && value.lat !== null) {
+      setQuery(value.address);
+    }
+  }, [value.address, value.lat]);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

@@ -237,16 +237,31 @@ function buildAgencyPrompt(
     group.toolKeys.map((k) => [k, toolResults[k]])
   );
 
-  return `Analyze permit requirements for ONLY these agencies: ${group.agencies.join(", ")}
+  // Separate document content from project description for clarity
+  const docMarker = "\nExtracted from uploaded documents:";
+  const docIdx = projectDesc.indexOf(docMarker);
+  const coreProject = docIdx >= 0 ? projectDesc.slice(0, docIdx) : projectDesc;
+  const documentContent = docIdx >= 0 ? projectDesc.slice(docIdx) : "";
 
-Project: ${projectDesc}
+  let prompt = `Analyze permit requirements for ONLY these agencies: ${group.agencies.join(", ")}
+
+Project: ${coreProject}
 
 Classification: ${JSON.stringify(classification, null, 2)}
 
 Pre-computed threshold results (already evaluated — use these directly, do NOT re-check):
-${JSON.stringify(relevantResults, null, 2)}
+${JSON.stringify(relevantResults, null, 2)}`;
 
-Based on these threshold results, determine which permits are required for each agency.
+  if (documentContent) {
+    prompt += `
+
+UPLOADED DOCUMENT CONTEXT (use these details to inform your analysis — they may contain chemical inventories, equipment specs, process descriptions, or site plans that affect permit requirements):
+${documentContent}`;
+  }
+
+  prompt += `
+
+Based on these threshold results${documentContent ? " and uploaded document details" : ""}, determine which permits are required for each agency.
 For each permit, state: permit_name, required (boolean), confidence, reason (cite specific rule), timeline_weeks, forms, priority, estimated_cost.
 
 Output JSON:
@@ -260,6 +275,8 @@ Output JSON:
     }
   ]
 }`;
+
+  return prompt;
 }
 
 export async function POST(req: Request) {
@@ -383,7 +400,7 @@ ${countyConfig.regulationsKB}`;
               { role: "system", content: synthesizerSystemPrompt },
               {
                 role: "user",
-                content: `Create optimal permit filing sequence.\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
+                content: `Create optimal permit filing sequence.\n\nProject: ${projectDescription}\n\nPermit Determinations:\n${JSON.stringify(permitResult, null, 2)}`,
               },
             ],
             { maxTokens: 2048, temperature: 0.2 }
