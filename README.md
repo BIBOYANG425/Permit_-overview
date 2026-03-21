@@ -4,6 +4,7 @@
 
 A multi-agent AI system that analyzes environmental permit requirements across **10+ regulatory agencies** in Los Angeles and Ventura Counties. Describe your project in plain English, get a full compliance report with cost estimates, timelines, filing sequences, and agency-specific citations — in under 60 seconds.
 
+[![NVIDIA GTC Hackathon Top 5](https://img.shields.io/badge/NVIDIA%20GTC%20Hackathon-Top%205-76B900?logo=nvidia&logoColor=white)](https://impact-agents.devpost.com/)
 [![Built with NVIDIA NIM](https://img.shields.io/badge/NVIDIA-NIM%20API-76B900?logo=nvidia&logoColor=white)](https://build.nvidia.com/)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -201,9 +202,11 @@ Set `NVIDIA_NIM_API_KEY_FAST` and `NVIDIA_NIM_API_KEY_REASONING` in your Vercel 
 
 ---
 
-## 🏗️ Built For
+## 🏆 Built For
 
-**[NVIDIA Agents for Impact Hackathon](https://impact-agents.devpost.com/)** — NVIDIA + Vercel (March 2026)
+**[NVIDIA GTC Student Hackathon — Hack for Impact](https://impact-agents.devpost.com/)** — Top 5 Finalist
+
+NVIDIA + Vercel (March 2026)
 
 ---
 
