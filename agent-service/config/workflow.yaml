@@ -1,0 +1,53 @@
+# NVIDIA Agent Toolkit Workflow Configuration
+# LA Permit Navigator Agent Pipeline
+
+llms:
+  nano_9b:
+    _type: nim
+    model_name: "nvidia/nvidia-nemotron-nano-9b-v2"
+    temperature: 0.3
+    max_tokens: 2048
+
+  super_49b:
+    _type: nim
+    model_name: "nvidia/llama-3.3-nemotron-super-49b-v1"
+    temperature: 0.2
+    max_tokens: 3000
+
+functions:
+  sic_lookup:
+    _type: rest_tool
+    endpoint: "${TOOLS_BASE_URL}/sic-lookup"
+    method: POST
+
+  waterway_proximity_check:
+    _type: rest_tool
+    endpoint: "${TOOLS_BASE_URL}/waterway-check"
+    method: POST
+
+  school_proximity_check:
+    _type: rest_tool
+    endpoint: "${TOOLS_BASE_URL}/school-proximity"
+    method: POST
+
+  precompute:
+    _type: rest_tool
+    endpoint: "${TOOLS_BASE_URL}/precompute"
+    method: POST
+
+profiling:
+  enabled: true
+  token_counting: true
+  timing: true
+  log_level: INFO
+
+tracing:
+  enabled: false
+  # Uncomment to enable OpenTelemetry tracing:
+  # exporter: otlp
+  # endpoint: http://localhost:4318
+  # service_name: la-permit-agent-service
+
+workflow:
+  _type: custom
+  entry_point: "src.pipeline:run_pipeline"
