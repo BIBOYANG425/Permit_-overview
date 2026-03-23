@@ -18,7 +18,6 @@ interface IdentifyEmissionsResult {
     has_process_wastewater: boolean;
     has_fog: boolean;
     has_heavy_metals_in_water: boolean;
-    exceeds_hazmat_thresholds: boolean;
   };
 }
 
@@ -197,7 +196,6 @@ export function identifyEmissions(input: IdentifyEmissionsInput): IdentifyEmissi
     has_process_wastewater: false,
     has_fog: false,
     has_heavy_metals_in_water: false,
-    exceeds_hazmat_thresholds: false,
   };
 
   for (const op of input.operations) {
