@@ -89,18 +89,33 @@ export function classifyBusiness(input: ClassifyBusinessInput): ClassifyBusiness
 
   // Fallback for unmatched
   if (best.score === 0) {
-    const fallbackCode = input.is_manufacturing ? "3999" : "9999";
-    const fallbackDesc = input.is_manufacturing ? "Manufacturing Industries, NEC" : "Nonclassifiable Establishments";
+    let fallbackCode = "9999";
+    let fallbackDesc = "Nonclassifiable Establishments";
+    let category = "Unclassified";
+    let regulatory_flags = {
+      scaqmd_permit_likely: false,
+      igp_regulated: false,
+      has_pretreatment_standard: false,
+      pretreatment_category: null as string | null,
+    };
+
+    if (input.is_manufacturing) {
+      fallbackCode = "3999";
+      fallbackDesc = "Manufacturing Industries, NEC";
+      category = "Miscellaneous Manufacturing";
+      regulatory_flags = { scaqmd_permit_likely: true, igp_regulated: true, has_pretreatment_standard: false, pretreatment_category: null };
+    } else if (input.is_construction) {
+      fallbackCode = "1542";
+      fallbackDesc = "General Contractors — Nonresidential Buildings";
+      category = "Building Construction";
+      regulatory_flags = { scaqmd_permit_likely: true, igp_regulated: false, has_pretreatment_standard: false, pretreatment_category: null };
+    }
+
     return {
       sic_code: fallbackCode,
       sic_description: fallbackDesc,
-      category: input.is_manufacturing ? "Miscellaneous Manufacturing" : "Unclassified",
-      regulatory_flags: {
-        scaqmd_permit_likely: input.is_manufacturing,
-        igp_regulated: input.is_manufacturing,
-        has_pretreatment_standard: false,
-        pretreatment_category: null,
-      },
+      category,
+      regulatory_flags,
       common_emissions: [],
       common_waste_streams: [],
       confidence: "low",

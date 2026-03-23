@@ -75,26 +75,28 @@ export function shouldEscalate(
   }
 
   const triggers: string[] = [];
+  const nested = classification.classification as Record<string, unknown> | undefined;
+  const c = nested ?? classification;
 
   if (classification.confidence === "low") {
     triggers.push("low confidence");
   }
-  if (classification.sic_code === "9999") {
+  if (c.sic_code === "9999") {
     triggers.push("unclassified SIC (9999)");
   }
-  if (classification.sic_code === "3999") {
+  if (c.sic_code === "3999") {
     triggers.push("generic manufacturing NEC (3999)");
   }
-  if (!classification.city) {
+  if (!c.city) {
     triggers.push("no city identified");
   }
 
-  const emissionsProfile = classification.emissions_profile as Record<string, unknown> | undefined;
+  const emissionsProfile = c.emissions_profile as Record<string, unknown> | undefined;
   if (
     emissionsProfile &&
     Array.isArray(emissionsProfile.likely_air_pollutants) &&
     emissionsProfile.likely_air_pollutants.length === 0 &&
-    classification.involves_hazmat === true
+    c.involves_hazmat === true
   ) {
     triggers.push("hazmat flagged but no emissions identified");
   }

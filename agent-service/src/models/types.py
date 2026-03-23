@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── SSE Event Types ──
@@ -131,9 +131,18 @@ class PermitAnalysisInstructionSet(BaseModel):
     timestamp: str = ""
     confidence: Literal["high", "medium", "low"] = "medium"
     project_summary: str = ""
-    classification: dict = {}
-    emissions_profile: EmissionsProfile = EmissionsProfile()
-    location_context: LocationContext | None = None
+    classification: ExpandedClassification = Field(
+        default_factory=lambda: ExpandedClassification(
+            sic_code="", sic_description="", land_use_type=""
+        )
+    )
+    emissions_profile: EmissionsProfile = Field(default_factory=EmissionsProfile)
+    location_context: LocationContext = Field(
+        default_factory=lambda: LocationContext(
+            county="", county_name="", air_district="",
+            air_district_code="", water_board="", water_board_code=""
+        )
+    )
     scale: ProjectScale = ProjectScale()
     agency_instructions: list[AgencyInstruction] = []
     warnings: list[str] = []

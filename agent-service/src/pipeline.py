@@ -121,7 +121,12 @@ async def run_pipeline(
             )
 
         # 5. Pre-compute instruction set
-        resolved_city = city_config.cityName if city_config.cityName else city
+        classifier_city = (
+            classification_result.get("classification", {}).get("city", "")
+            if isinstance(classification_result, dict)
+            else ""
+        )
+        resolved_city = city_config.cityName or classifier_city or city
         if not resolved_city:
             resolved_city = f"{county_config.name} Unincorporated"
             emitter.emit_thought(

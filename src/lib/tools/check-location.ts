@@ -137,7 +137,8 @@ function findWaterbodyMatch(
     if (combined.includes(wb.name.toLowerCase())) score += 5;
 
     // Boost if the waterbody name appears in the geo entry's primary_waterbodies
-    if (geoEntry) {
+    // Only apply this boost when the input actually mentions water-related terms
+    if (geoEntry && mentionsWater) {
       for (const pw of geoEntry.primary_waterbodies) {
         if (pw.toLowerCase() === wb.name.toLowerCase()) score += 4;
         else if (
@@ -156,7 +157,8 @@ function findWaterbodyMatch(
   }
 
   // Fallback: if no keyword/area match but geo entry has primary_waterbodies, try direct match
-  if (!bestMatch && geoEntry && geoEntry.primary_waterbodies.length > 0) {
+  // Only when input actually mentions water-related terms to avoid false positives from city metadata
+  if (!bestMatch && geoEntry && geoEntry.primary_waterbodies.length > 0 && mentionsWater) {
     for (const pw of geoEntry.primary_waterbodies) {
       for (const wb of waterbodies) {
         if (wb.name.toLowerCase() === pw.toLowerCase()) {
@@ -178,8 +180,8 @@ function checkSchoolProximity(
   mentionsSchool: boolean | undefined,
   schoolDistanceFt: number | undefined,
 ): { nearSchool: boolean; distanceFt: number | null } {
-  // Explicit distance provided
-  if (schoolDistanceFt !== undefined) {
+  // Explicit non-negative distance provided (negative values like -1 are sentinels for "unknown")
+  if (schoolDistanceFt !== undefined && schoolDistanceFt >= 0) {
     return {
       nearSchool: schoolDistanceFt <= 1000,
       distanceFt: schoolDistanceFt,

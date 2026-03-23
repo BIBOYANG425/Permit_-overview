@@ -17,6 +17,6 @@ async def check_location(
         payload["nearby_water_features"] = nearby_water_features
     if mentions_school:
         payload["mentions_school"] = mentions_school
-    if school_distance_ft > 0:
+    if school_distance_ft >= 0:
         payload["school_distance_ft"] = school_distance_ft
     return await call_tool("check-location", payload)

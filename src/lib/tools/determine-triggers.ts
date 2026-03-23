@@ -39,7 +39,7 @@ interface DetermineTriggersResult {
 }
 
 export function determineTriggers(input: DetermineTriggersInput): DetermineTriggersResult {
-  const sicNum = parseInt(input.sic_code);
+  const sicNum = parseInt(input.sic_code, 10);
   const inManufacturingRange = sicNum >= 2000 && sicNum <= 3999;
   const inTransportRange = sicNum >= 4000 && sicNum <= 4999;
   const isRecycling = input.sic_code === "5015" || input.sic_code === "5093";
@@ -100,7 +100,7 @@ export function determineTriggers(input: DetermineTriggersInput): DetermineTrigg
   const cdfwReasons: string[] = [];
   if (input.near_waterway) {
     cdfwReasons.push("Near waterway — potential Section 404 (USACE) and Section 1602 Streambed Alteration Agreement (CDFW)");
-    cdfwReasons.push("Even concrete-lined channels in LA County are jurisdictional");
+    cdfwReasons.push("Even concrete-lined channels may be jurisdictional under state and federal law");
   }
   const cdfwUsace: AgencyTrigger = {
     triggered: cdfwTriggered,

@@ -1,5 +1,5 @@
 interface IdentifyEmissionsInput {
-  sic_code: string;
+  sic_code?: string;
   operations: string[];
   has_boiler_or_generator?: boolean;
   has_refrigeration?: boolean;
@@ -208,7 +208,6 @@ export function identifyEmissions(input: IdentifyEmissionsInput): IdentifyEmissi
     }
     for (const e of emissions.hazmat) {
       hazmatSet.add(e);
-      triggers.exceeds_hazmat_thresholds = true;
     }
     for (const e of emissions.waste) {
       wasteSet.add(e);

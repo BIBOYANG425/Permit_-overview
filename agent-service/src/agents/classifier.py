@@ -311,6 +311,7 @@ async def run_classifier(
                 messages=messages,
                 tools=tools,
                 tool_choice="auto",
+                parallel_tool_calls=False,
                 temperature=0.3,
                 top_p=0.9,
                 max_tokens=3072,

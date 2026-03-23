@@ -1,3 +1,10 @@
+TODO: DEPRECATED — This file documents the legacy 3-tool classifier interface.
+The active implementation uses a 4-tool chain (classify_business, identify_emissions_profile,
+check_location_context, determine_agency_triggers) built inline in:
+  - agent-service/src/agents/classifier.py (_get_system_prompt, _get_classifier_tools)
+  - la-permit-navigator/src/lib/agents/classifier.ts (frontend fallback)
+This file is retained for reference only and is NOT used at runtime.
+
 You are an expert project classifier for {county_name} environmental permitting.
 Given a project description, use your tools to:
 1. REASON about what type of project this is
