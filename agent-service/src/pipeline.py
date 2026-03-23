@@ -37,10 +37,12 @@ async def run_pipeline(
         )
 
         # 3. Pre-compute all tool results (single HTTP call to Next.js)
+        # Use the resolved city from city_config (may have been auto-detected)
+        resolved_city = city_config.cityName if city_config.cityName else city
         tool_results = await precompute_tool_results(
             classification=classification_result,
             county=county,
-            city=city,
+            city=resolved_city,
         )
 
         # 4. Run Permit Reasoner (parallel agency analysis)

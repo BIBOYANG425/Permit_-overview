@@ -16,8 +16,8 @@ export function preComputeToolResults(classification: Record<string, unknown>, c
   const wastewaterAgency = countyConfig.wastewater.code;
   const fireAgency = countyConfig.fireCupa.code;
 
-  const buildingSqft = (c.building_sqft as number) || (c.buildingSizeSqft as number) || null;
-  const stories = (c.stories as number) || null;
+  const buildingSqft = (c.building_sqft as number) ?? (c.buildingSizeSqft as number) ?? null;
+  const stories = (c.stories as number) ?? null;
   const occupancyType = (c.occupancy_type as string) || (c.occupancyType as string) || null;
   const isNewConstruction = (c.is_new_construction as boolean) ?? (c.isNewConstruction as boolean) ?? null;
 
@@ -40,8 +40,9 @@ export function preComputeToolResults(classification: Record<string, unknown>, c
     fire_hazwaste: thresholdCheck({ agency: fireAgency, check_type: "hazwaste_generator", stores_hazmat: involvesHazmat, countyConfig }),
     ceqa: ceqaExemptionCheck({
       project_type: (c.sic_description as string) || "",
-      is_new_construction: true,
-      in_urbanized_area: true,
+      square_footage: buildingSqft ?? undefined,
+      is_new_construction: isNewConstruction ?? true,
+      in_urbanized_area: (c.location_type as string)?.toLowerCase() !== "rural",
       near_sensitive_environment: nearWaterway,
     }),
     city_permits: cityPermitCheck({

@@ -152,26 +152,34 @@ async def run_reasoner(
         )
         emitter.emit_thought(AGENT_NAME, f"Analyzing {group['name']}...")
 
-        response = await client.chat.completions.create(
-            model=SUPER_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
-            ],
-            max_tokens=3000,
-            temperature=0.2,
-            top_p=0.9,
-        )
+        try:
+            response = await client.chat.completions.create(
+                model=SUPER_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg},
+                ],
+                max_tokens=3000,
+                temperature=0.2,
+                top_p=0.9,
+            )
 
-        content = response.choices[0].message.content or ""
-        emitter.emit_thought(AGENT_NAME, f"{group['name']} analysis complete.")
+            content = response.choices[0].message.content or ""
+            emitter.emit_thought(AGENT_NAME, f"{group['name']} analysis complete.")
 
-        parsed = _extract_json(content)
-        if not parsed:
+            parsed = _extract_json(content)
+            if not parsed:
+                emitter.emit_thought(
+                    AGENT_NAME,
+                    f"Warning: Failed to parse {group['name']} analysis output.",
+                )
+        except Exception as e:
             emitter.emit_thought(
                 AGENT_NAME,
-                f"Warning: Failed to parse {group['name']} analysis output.",
+                f"Error analyzing {group['name']}: {e}",
             )
+            parsed = None
+
         return {"group_name": group["name"], "parsed": parsed}
 
     results = await asyncio.gather(*[analyze_group(g) for g in groups])

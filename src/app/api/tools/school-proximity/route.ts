@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
     const result = schoolProximityCheck({ location_description, mentions_school_nearby, distance_if_known_ft, countyConfig });
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: `School proximity check failed: ${error instanceof Error ? error.message : "Unknown"}` }, { status: 500 });
+    console.error("School proximity check failed:", error);
+    return NextResponse.json({ error: "School proximity check failed" }, { status: 500 });
   }
 }

@@ -1,7 +1,8 @@
 import asyncio
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from src.models.types import AnalyzeRequest
 from src.pipeline import run_pipeline
@@ -17,8 +18,11 @@ async def health():
 
 @app.post("/analyze")
 async def analyze(request: Request):
-    body = await request.json()
-    req = AnalyzeRequest(**body)
+    try:
+        body = await request.json()
+        req = AnalyzeRequest(**body)
+    except (ValueError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
 
     emitter = SSEEmitter()
 

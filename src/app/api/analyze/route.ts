@@ -4,8 +4,21 @@
 const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL || "http://localhost:8080";
 
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { projectDescription, county, city } = body;
+  let projectDescription: string;
+  let county: string;
+  let city: string;
+
+  try {
+    const body = await req.json();
+    projectDescription = body.projectDescription;
+    county = body.county;
+    city = body.city;
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   if (!projectDescription || typeof projectDescription !== "string") {
     return new Response(JSON.stringify({ error: "Project description is required" }), {

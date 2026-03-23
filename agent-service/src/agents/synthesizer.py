@@ -102,7 +102,13 @@ async def run_synthesizer(
         if content:
             emitter.emit_thought(AGENT_NAME, content)
 
-        result = _extract_json(content) or _FALLBACK
+        parsed = _extract_json(content)
+        if parsed is None and content:
+            emitter.emit_thought(
+                AGENT_NAME,
+                "Warning: Could not parse synthesis JSON — using fallback timeline.",
+            )
+        result = parsed or _FALLBACK
 
     except Exception as e:
         emitter.emit_error(f"Synthesis failed: {e}", AGENT_NAME)

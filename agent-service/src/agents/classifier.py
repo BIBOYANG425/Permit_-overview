@@ -131,7 +131,11 @@ After using all relevant tools, provide your final classification as a JSON obje
     "school_distance_ft": number or null,
     "county": "{county_config.id}",
     "city": "detected city name or null",
-    "document_extracted_details": "Summary or null"
+    "document_extracted_details": "Summary or null",
+    "building_sqft": number or null,
+    "stories": integer or null,
+    "occupancy_type": "residential/commercial/industrial/mixed or null",
+    "is_new_construction": boolean or null
   }}
 }}
 
