@@ -1,0 +1,155 @@
+[
+  {
+    "name": "Oxnard",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek", "Revolon Slough", "Santa Clara River"],
+    "notes": "Largest city in Ventura County. Significant manufacturing (agriculture-related, electronics, defense). Port Hueneme naval base nearby. Coastal zone along shoreline."
+  },
+  {
+    "name": "Ventura",
+    "type": "incorporated",
+    "watershed": "Ventura River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Ventura River", "Santa Clara River"],
+    "notes": "County seat (San Buenaventura). Mixed economy — oil production, some manufacturing, services. Ventura River and Santa Clara River mouths. Coastal zone along shoreline."
+  },
+  {
+    "name": "Thousand Oaks",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek", "Arroyo Conejo"],
+    "notes": "Mostly commercial/biotech (Amgen headquarters). Conejo Valley. Less heavy industry. Calleguas Creek watershed."
+  },
+  {
+    "name": "Simi Valley",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Arroyo Simi", "Calleguas Creek"],
+    "notes": "Light manufacturing, tech, business parks. Arroyo Simi flows to Calleguas Creek. Former Santa Susana Field Lab contamination issues nearby."
+  },
+  {
+    "name": "Moorpark",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Arroyo Las Posas", "Calleguas Creek"],
+    "notes": "Smaller scale industrial and business parks. Arroyo Las Posas tributary to Calleguas Creek. Agricultural surroundings."
+  },
+  {
+    "name": "Camarillo",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek", "Revolon Slough"],
+    "notes": "Business parks, light industrial, logistics. Pleasant Valley area. Calleguas Creek watershed. Agricultural processing."
+  },
+  {
+    "name": "Santa Paula",
+    "type": "incorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Santa Clara River", "Santa Paula Creek"],
+    "notes": "Agricultural processing, smaller manufacturing. Citrus industry heritage. Santa Clara River corridor. Oil production history."
+  },
+  {
+    "name": "Fillmore",
+    "type": "incorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Santa Clara River", "Sespe Creek"],
+    "notes": "Small agricultural city. Santa Clara River runs through city. Sespe Creek confluence. Sespe Creek is wild and scenic. Citrus and avocado farming."
+  },
+  {
+    "name": "Ojai",
+    "type": "incorporated",
+    "watershed": "Ventura River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Ventura River", "San Antonio Creek"],
+    "notes": "Small tourist and arts city. Ojai Valley. Ventura River watershed. Lake Casitas nearby. Very limited industrial. Near Los Padres National Forest."
+  },
+  {
+    "name": "Port Hueneme",
+    "type": "incorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek", "Mugu Lagoon", "Pacific Ocean"],
+    "notes": "Coastal city. Naval Base Ventura County. Port operations. Coastal zone applies citywide. Military and logistics."
+  },
+  {
+    "name": "Saticoy",
+    "type": "unincorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Santa Clara River"],
+    "notes": "Unincorporated Ventura County community. Agricultural processing area along Santa Clara River between Ventura and Santa Paula. Environmental justice community."
+  },
+  {
+    "name": "El Rio",
+    "type": "unincorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Santa Clara River"],
+    "notes": "Unincorporated Ventura County community. Agricultural and residential. Near Oxnard. Santa Clara River area. Ventura County Planning is lead agency."
+  },
+  {
+    "name": "Piru",
+    "type": "unincorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Santa Clara River", "Piru Creek"],
+    "notes": "Unincorporated Ventura County community. Small agricultural community. Lake Piru nearby. Santa Clara River corridor."
+  },
+  {
+    "name": "Meiners Oaks",
+    "type": "unincorporated",
+    "watershed": "Ventura River",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Ventura River"],
+    "notes": "Unincorporated Ventura County community. Adjacent to Ojai. Ventura River corridor. Residential and rural."
+  },
+  {
+    "name": "Oak Park",
+    "type": "unincorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek", "Medea Creek"],
+    "notes": "Unincorporated Ventura County community. Suburban residential near Thousand Oaks and Agoura Hills. Calleguas Creek watershed."
+  },
+  {
+    "name": "Somis",
+    "type": "unincorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek"],
+    "notes": "Unincorporated Ventura County community. Agricultural area between Camarillo and Moorpark. Calleguas Creek watershed."
+  },
+  {
+    "name": "Casa Conejo",
+    "type": "unincorporated",
+    "watershed": "Calleguas Creek",
+    "aqmd": "Ventura County APCD",
+    "rwqcb_region": 3,
+    "primary_waterbodies": ["Calleguas Creek"],
+    "notes": "Unincorporated Ventura County community near Thousand Oaks. Residential. Calleguas Creek watershed."
+  }
+]

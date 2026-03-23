@@ -1,0 +1,506 @@
+[
+  {
+    "name": "Vernon",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Compton Creek"],
+    "notes": "Almost entirely industrial. 50,000+ workers, ~100 residents. Heavy manufacturing, food processing, metal finishing."
+  },
+  {
+    "name": "Commerce",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Rio Hondo"],
+    "notes": "Major industrial city. Large warehouse and distribution hub. Adjacent to Vernon. Citadel Outlets area."
+  },
+  {
+    "name": "Carson",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel", "Long Beach Harbor / San Pedro Bay"],
+    "notes": "Significant industrial and refinery activity. Dominguez Channel runs through the city. Near ports of LA/Long Beach."
+  },
+  {
+    "name": "Torrance",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel", "Santa Monica Bay"],
+    "notes": "Mixed industrial and residential. Major refinery (PBF Energy). Aerospace manufacturing. Coastal zone in western portion."
+  },
+  {
+    "name": "Irwindale",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Santa Fe Dam Basin"],
+    "notes": "Mining and aggregate extraction. Ready-mix concrete operations. Miller Brewing. Rock quarries throughout city."
+  },
+  {
+    "name": "Santa Fe Springs",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Rio Hondo"],
+    "notes": "Major industrial city. Oil production, manufacturing, distribution. Heritage Falls and Los Nietos area."
+  },
+  {
+    "name": "Long Beach",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "San Gabriel River", "Long Beach Harbor / San Pedro Bay"],
+    "notes": "Port of Long Beach. Oil production (THUMS islands). Major industrial, port logistics, and coastal zone. Concrete-lined LA River terminus."
+  },
+  {
+    "name": "Compton",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Compton Creek"],
+    "notes": "Mixed residential and industrial. Compton Creek is 303(d) listed. Light manufacturing and warehousing."
+  },
+  {
+    "name": "Los Angeles",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Ballona Creek", "Santa Monica Bay", "Dominguez Channel"],
+    "notes": "Largest city in county. Spans multiple watersheds. Industrial areas in downtown, San Fernando Valley, Harbor area. Coastal zone along Santa Monica/Venice/San Pedro."
+  },
+  {
+    "name": "Pasadena",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Arroyo Seco"],
+    "notes": "Arroyo Seco tributary to LA River. Mix of commercial, institutional (Caltech, JPL), and light industrial."
+  },
+  {
+    "name": "Glendale",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Verdugo Wash"],
+    "notes": "Commercial and light industrial. DreamWorks Animation, Disney offices. Verdugo Wash is concrete-lined tributary to LA River."
+  },
+  {
+    "name": "Burbank",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Burbank Western Channel"],
+    "notes": "Entertainment industry hub (Warner Bros, Disney). Light manufacturing, media production. LA River runs along southern boundary."
+  },
+  {
+    "name": "Santa Monica",
+    "type": "incorporated",
+    "watershed": "Ballona Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Ballona Creek", "Santa Monica Bay"],
+    "notes": "Coastal city. Ballona Creek watershed. Coastal zone applies citywide. Tourism, tech, commercial."
+  },
+  {
+    "name": "Beverly Hills",
+    "type": "incorporated",
+    "watershed": "Ballona Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Ballona Creek"],
+    "notes": "Primarily commercial and residential. Limited industrial. Ballona Creek watershed."
+  },
+  {
+    "name": "Culver City",
+    "type": "incorporated",
+    "watershed": "Ballona Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Ballona Creek"],
+    "notes": "Media and tech hub (Amazon Studios, Sony). Ballona Creek runs through the city. Hayden Tract industrial area."
+  },
+  {
+    "name": "West Hollywood",
+    "type": "incorporated",
+    "watershed": "Ballona Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Ballona Creek"],
+    "notes": "Small, dense city. Primarily commercial and residential. Very limited industrial activity."
+  },
+  {
+    "name": "Inglewood",
+    "type": "incorporated",
+    "watershed": "Ballona Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Ballona Creek", "Dominguez Channel"],
+    "notes": "SoFi Stadium, The Forum. Mixed commercial and residential. Some light industrial near airport."
+  },
+  {
+    "name": "Hawthorne",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel"],
+    "notes": "SpaceX headquarters. Aerospace and manufacturing. Near LAX. Dominguez Channel watershed."
+  },
+  {
+    "name": "Gardena",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel"],
+    "notes": "Light manufacturing, auto repair, small industrial shops. South Bay location."
+  },
+  {
+    "name": "Lawndale",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel"],
+    "notes": "Small South Bay city. Primarily residential with some commercial. Dominguez Channel watershed."
+  },
+  {
+    "name": "El Monte",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Rio Hondo"],
+    "notes": "San Gabriel Valley industrial center. Manufacturing, food processing, auto salvage. Rio Hondo and San Gabriel River confluence area."
+  },
+  {
+    "name": "West Covina",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Walnut Creek"],
+    "notes": "Suburban city in San Gabriel Valley. Mostly residential and commercial with some light industrial."
+  },
+  {
+    "name": "Whittier",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River"],
+    "notes": "Eastern LA County. Oil production history. Mix of residential, commercial, and some industrial."
+  },
+  {
+    "name": "Pico Rivera",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Rio Hondo"],
+    "notes": "San Gabriel River and Rio Hondo confluence. Light manufacturing and warehousing. Whittier Narrows Dam downstream."
+  },
+  {
+    "name": "Norwalk",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River"],
+    "notes": "Southeast LA County. Mix of residential, commercial, and light industrial. LA County government offices."
+  },
+  {
+    "name": "Cerritos",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Coyote Creek"],
+    "notes": "Primarily commercial (Cerritos Auto Square) and residential. Some light industrial. Near Orange County border."
+  },
+  {
+    "name": "Azusa",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River"],
+    "notes": "Foothill city. Mining and aggregate operations. Azusa Rock quarry. San Gabriel River canyon."
+  },
+  {
+    "name": "Arcadia",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Santa Anita Wash"],
+    "notes": "Santa Anita racetrack. Primarily residential. Santa Anita Wash is a tributary to the San Gabriel River."
+  },
+  {
+    "name": "Monrovia",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Sawpit Wash"],
+    "notes": "Foothill city. Light industrial in southern portion. Old Town commercial district. Sawpit Wash drains to San Gabriel River."
+  },
+  {
+    "name": "Pomona",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "San Jose Creek"],
+    "notes": "Eastern LA County. Significant industrial base. Cal Poly Pomona. Fairplex. San Jose Creek tributary to San Gabriel River."
+  },
+  {
+    "name": "Downey",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "Rio Hondo"],
+    "notes": "Former aerospace hub (Rockwell/Boeing). Mix of residential, commercial, and light industrial. Rio Hondo along western boundary."
+  },
+  {
+    "name": "Bell",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River"],
+    "notes": "Small, dense industrial and residential city. LA River runs along western boundary. Scrap yards and light manufacturing."
+  },
+  {
+    "name": "Maywood",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River"],
+    "notes": "Smallest city in LA County by area. Dense residential with some light industrial. Adjacent to Vernon and Commerce."
+  },
+  {
+    "name": "South Gate",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River"],
+    "notes": "Former steel and auto manufacturing hub. LA River runs through city. Warehousing and light industrial remain."
+  },
+  {
+    "name": "Lynwood",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Compton Creek"],
+    "notes": "Residential and commercial. Some light industrial along LA River corridor. Adjacent to Compton."
+  },
+  {
+    "name": "Paramount",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Compton Creek", "Los Angeles River"],
+    "notes": "Light industrial and residential. Compton Creek runs through city. Near Compton and Lynwood."
+  },
+  {
+    "name": "Bellflower",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River"],
+    "notes": "Suburban residential with some commercial. Southeast LA County. Near Lakewood and Cerritos."
+  },
+  {
+    "name": "Lakewood",
+    "type": "incorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River"],
+    "notes": "Planned community. Primarily residential. Some commercial. Near Long Beach. Lakewood contract city model."
+  },
+  {
+    "name": "Signal Hill",
+    "type": "incorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River", "Long Beach Harbor / San Pedro Bay"],
+    "notes": "Small city surrounded by Long Beach. Active oil production. Historic oil derricks. Industrial and commercial."
+  },
+  {
+    "name": "Rancho Palos Verdes",
+    "type": "incorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Santa Monica Bay"],
+    "notes": "Coastal bluff city. Primarily residential. Coastal zone applies. Portuguese Bend landslide area. Limited industrial."
+  },
+  {
+    "name": "Calabasas",
+    "type": "incorporated",
+    "watershed": "Malibu Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Malibu Creek", "Las Virgenes Creek"],
+    "notes": "Western LA County. Malibu Creek watershed. Santa Monica Mountains. Primarily residential and commercial. Wildlife corridor."
+  },
+  {
+    "name": "Malibu",
+    "type": "incorporated",
+    "watershed": "Malibu Creek",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Malibu Creek", "Santa Monica Bay", "Malibu Lagoon"],
+    "notes": "Coastal city. Entire city in coastal zone. Malibu Creek watershed. Septic system issues. Very limited industrial. Coastal Commission jurisdiction."
+  },
+  {
+    "name": "Lancaster",
+    "type": "incorporated",
+    "watershed": "Antelope Valley",
+    "aqmd": "Antelope Valley AQMD",
+    "rwqcb_region": 6,
+    "primary_waterbodies": ["Amargosa Creek", "Piute Ponds"],
+    "notes": "High desert city. Antelope Valley AQMD jurisdiction (NOT SCAQMD). Lahontan RWQCB Region 6. Aerospace and solar energy."
+  },
+  {
+    "name": "Palmdale",
+    "type": "incorporated",
+    "watershed": "Antelope Valley",
+    "aqmd": "Antelope Valley AQMD",
+    "rwqcb_region": 6,
+    "primary_waterbodies": ["Amargosa Creek", "Littlerock Creek"],
+    "notes": "High desert city. Antelope Valley AQMD jurisdiction (NOT SCAQMD). Lahontan RWQCB Region 6. Lockheed Martin/Northrop Grumman aerospace. Edwards AFB nearby."
+  },
+  {
+    "name": "Santa Clarita",
+    "type": "incorporated",
+    "watershed": "Santa Clara River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Santa Clara River", "Castaic Creek", "San Francisquito Creek"],
+    "notes": "Northern LA County. Santa Clara River watershed. Valencia, Newhall, Saugus, Canyon Country communities. Film industry and light manufacturing."
+  },
+  {
+    "name": "East Rancho Dominguez",
+    "type": "unincorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel", "Compton Creek"],
+    "notes": "Unincorporated LA County community. Formerly known as East Compton. Industrial and residential mix. Dominguez Channel area."
+  },
+  {
+    "name": "Willowbrook",
+    "type": "unincorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Compton Creek", "Los Angeles River"],
+    "notes": "Unincorporated LA County community. Compton Creek corridor. Residential with some commercial. Martin Luther King Jr. Community Hospital."
+  },
+  {
+    "name": "Florence-Firestone",
+    "type": "unincorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River"],
+    "notes": "Unincorporated LA County community. Dense residential and commercial. Adjacent to Huntington Park and South Gate."
+  },
+  {
+    "name": "Walnut Park",
+    "type": "unincorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Los Angeles River"],
+    "notes": "Unincorporated LA County community. Small, dense residential area between Huntington Park and South Gate."
+  },
+  {
+    "name": "West Athens",
+    "type": "unincorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel"],
+    "notes": "Unincorporated LA County community. Residential with some commercial. Near Inglewood and Hawthorne."
+  },
+  {
+    "name": "Westmont",
+    "type": "unincorporated",
+    "watershed": "Dominguez Channel",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Dominguez Channel"],
+    "notes": "Unincorporated LA County community. Residential and commercial. Adjacent to West Athens. Near the 110 freeway."
+  },
+  {
+    "name": "Altadena",
+    "type": "unincorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Eaton Wash", "Arroyo Seco"],
+    "notes": "Unincorporated LA County community. Foothills above Pasadena. Eaton Wash and Arroyo Seco tributaries to LA River. Residential with some commercial."
+  },
+  {
+    "name": "La Crescenta-Montrose",
+    "type": "unincorporated",
+    "watershed": "Los Angeles River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["Verdugo Wash"],
+    "notes": "Unincorporated LA County community. Foothill area near Glendale. Verdugo Wash drains to LA River. Primarily residential."
+  },
+  {
+    "name": "Hacienda Heights",
+    "type": "unincorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "San Jose Creek"],
+    "notes": "Unincorporated LA County community in San Gabriel Valley. Hsi Lai Temple. Primarily residential with some commercial."
+  },
+  {
+    "name": "Rowland Heights",
+    "type": "unincorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "San Jose Creek"],
+    "notes": "Unincorporated LA County community. Eastern San Gabriel Valley. Primarily residential and commercial."
+  },
+  {
+    "name": "Avocado Heights",
+    "type": "unincorporated",
+    "watershed": "San Gabriel River",
+    "aqmd": "South Coast AQMD",
+    "rwqcb_region": 4,
+    "primary_waterbodies": ["San Gabriel River", "San Jose Creek"],
+    "notes": "Unincorporated LA County community. Near La Puente and West Covina. Residential with some industrial along major roads."
+  }
+]

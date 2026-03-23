@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── SSE Event Types ──
@@ -17,6 +17,7 @@ class AgentEventType(str, Enum):
     agent_complete = "agent_complete"
     final_result = "final_result"
     error = "error"
+    model_route = "model_route"
 
 
 class AgentEvent(BaseModel):
@@ -54,6 +55,98 @@ class ProjectClassification(BaseModel):
 class ClassifierResult(BaseModel):
     reasoning_trace: list[str] = []
     classification: ProjectClassification
+
+
+# ── Expanded Classification ──
+
+
+class EmissionsProfile(BaseModel):
+    likely_air_pollutants: list[str] = []
+    likely_tacs: list[str] = []
+    wastewater_types: list[str] = []
+    has_fog: bool = False
+
+
+class ExpandedClassification(ProjectClassification):
+    project_summary: str = ""
+    key_operations: list[str] = []
+    emissions_profile: EmissionsProfile = EmissionsProfile()
+    building_sqft: float | None = None
+    stories: int | None = None
+    occupancy_type: str | None = None
+    is_new_construction: bool | None = None
+
+
+# ── Permit Analysis Instruction Set ──
+
+
+class RuleToEvaluate(BaseModel):
+    rule_id: str
+    rule_name: str
+    applies: bool
+    reason: str
+    key_threshold: str
+
+
+class AgencyInstruction(BaseModel):
+    agency_id: str
+    agency_name: str
+    triggered: bool
+    priority: Literal["critical", "important", "recommended", "not_applicable"]
+    analysis_instructions: str
+    rules_to_evaluate: list[RuleToEvaluate] = []
+    expected_permits: list[str] = []
+    key_questions: list[str] = []
+
+
+class LocationContext(BaseModel):
+    county: str
+    county_name: str
+    air_district: str
+    air_district_code: str
+    water_board: str
+    water_board_code: str
+    watershed: str | None = None
+    nearest_303d_waterbody: str | None = None
+    waterbody_impairments: list[str] = []
+    is_303d_watershed: bool = False
+    near_school_1000ft: bool = False
+    school_distance_ft: float | None = None
+    near_waterway_50ft: bool = False
+    in_coastal_zone: bool = False
+
+
+class ProjectScale(BaseModel):
+    facility_sqft: float | None = None
+    land_disturbance_acres: float = 0
+    is_new_construction: bool | None = None
+    is_renovation: bool = False
+    stories: int | None = None
+    occupancy_type: str | None = None
+
+
+class PermitAnalysisInstructionSet(BaseModel):
+    case_id: str = ""
+    generated_by: str = "classifier-agent"
+    timestamp: str = ""
+    confidence: Literal["high", "medium", "low"] = "medium"
+    project_summary: str = ""
+    classification: ExpandedClassification = Field(
+        default_factory=lambda: ExpandedClassification(
+            sic_code="", sic_description="", land_use_type=""
+        )
+    )
+    emissions_profile: EmissionsProfile = Field(default_factory=EmissionsProfile)
+    location_context: LocationContext = Field(
+        default_factory=lambda: LocationContext(
+            county="", county_name="", air_district="",
+            air_district_code="", water_board="", water_board_code=""
+        )
+    )
+    scale: ProjectScale = ProjectScale()
+    agency_instructions: list[AgencyInstruction] = []
+    warnings: list[str] = []
+    unknowns: list[str] = []
 
 
 # ── Permit Analysis Types ──
