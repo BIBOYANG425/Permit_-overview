@@ -40,7 +40,7 @@ const sicCodes = sicCodesData as SICEntry[];
 export function classifyBusiness(input: ClassifyBusinessInput): ClassifyBusinessResult {
   const activity = input.business_activity.toLowerCase();
   const activityWords = activity.split(/\s+/).filter(w => w.length > 3);
-  const processes = (input.key_processes || []).map(p => p.toLowerCase());
+  const processes = (input.key_processes || []).map(p => p.trim().toLowerCase()).filter(Boolean);
 
   const scored = sicCodes.map(entry => {
     let baseScore = 0;

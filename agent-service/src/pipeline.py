@@ -51,16 +51,22 @@ def _should_escalate(classification: dict, current_model: str) -> tuple[bool, st
     if current_model == SUPER_MODEL:
         return False, "Already at max model tier"
 
-    triggers = []
     c = classification.get("classification", classification)
 
-    if classification.get("confidence") == "low":
-        triggers.append("low confidence")
+    # Check confidence at both nested and wrapper level
+    confidence = c.get("confidence", classification.get("confidence"))
+    if confidence == "low":
+        return True, "Escalating: low confidence — immediate re-run"
+
+    triggers = []
     if c.get("sic_code") == "9999":
         triggers.append("unclassified SIC")
     if c.get("sic_code") == "3999":
         triggers.append("generic manufacturing NEC")
-    if not c.get("city"):
+
+    # Check city at both nested and wrapper level
+    city = c.get("city", classification.get("city"))
+    if not city:
         triggers.append("no city identified")
 
     ep = c.get("emissions_profile", {})
@@ -108,6 +114,23 @@ async def run_pipeline(
             emitter=emitter,
             model=start_model,
         )
+
+        # 3a. Validate classifier output
+        if not isinstance(classification_result, dict) or "raw" in classification_result:
+            emitter.emit_thought(
+                "Pipeline",
+                f"Classifier returned malformed result (model: {start_model}), escalating.",
+            )
+            emitter.emit_model_route("Model Router", SUPER_MODEL, "Malformed classifier output")
+            classification_result = await run_classifier(
+                project_description=project_description,
+                county_config=county_config,
+                emitter=emitter,
+                model=SUPER_MODEL,
+            )
+            if not isinstance(classification_result, dict) or "raw" in classification_result:
+                emitter.emit_error("Classifier failed to produce structured output after escalation")
+                return
 
         # 4. Check if escalation is needed
         should_escalate, escalate_reason = _should_escalate(classification_result, start_model)

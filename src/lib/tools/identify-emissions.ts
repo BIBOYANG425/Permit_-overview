@@ -165,8 +165,16 @@ function fuzzyMatchOperation(op: string): string | null {
     let score = 0;
     for (const kw of keyWords) {
       for (const ow of opWords) {
-        if (ow.includes(kw) || kw.includes(ow)) score++;
+        if (ow === kw) {
+          score += 2;
+        } else if (ow.includes(kw) || kw.includes(ow)) {
+          score += 1;
+        }
       }
+    }
+    // Bonus for fully-matched keys (all key words covered by input)
+    if (keyWords.every(kw => opWords.some(ow => ow === kw || ow.includes(kw) || kw.includes(ow)))) {
+      score += 1;
     }
     if (score > bestScore) {
       bestScore = score;
@@ -221,7 +229,6 @@ export function identifyEmissions(input: IdentifyEmissionsInput): IdentifyEmissi
     airSet.add("NOx (combustion)");
     airSet.add("CO (combustion)");
     airSet.add("PM2.5 (combustion)");
-    triggers.has_voc = true;
   }
 
   if (input.has_refrigeration) {
