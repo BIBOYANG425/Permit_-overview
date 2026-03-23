@@ -20,8 +20,10 @@ async def health():
 async def analyze(request: Request):
     try:
         body = await request.json()
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="Request body must be a JSON object")
         req = AnalyzeRequest(**body)
-    except (ValueError, ValidationError) as e:
+    except (ValueError, TypeError, ValidationError) as e:
         raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
 
     emitter = SSEEmitter()
@@ -34,10 +36,21 @@ async def analyze(request: Request):
             emitter=emitter,
         )
 
-    asyncio.create_task(run())
+    task = asyncio.create_task(run())
+
+    async def event_stream():
+        try:
+            async for chunk in emitter.stream():
+                yield chunk
+        finally:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     return StreamingResponse(
-        emitter.stream(),
+        event_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

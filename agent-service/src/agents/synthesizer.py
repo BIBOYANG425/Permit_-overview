@@ -108,7 +108,12 @@ async def run_synthesizer(
                 AGENT_NAME,
                 "Warning: Could not parse synthesis JSON — using fallback timeline.",
             )
-        result = parsed or _FALLBACK
+            result = {
+                **_FALLBACK,
+                "synthesis_warning": "Model output could not be parsed — timeline is estimated",
+            }
+        else:
+            result = parsed or _FALLBACK
 
     except Exception as e:
         emitter.emit_error(f"Synthesis failed: {e}", AGENT_NAME)

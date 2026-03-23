@@ -137,9 +137,15 @@ async def run_reasoner(
     )
 
     system_prompt = (
-        f"You are an expert {county_config.name} environmental permit analyst. "
+        f"You are an expert {county_config.name} environmental permit analyst.\n"
         f"You receive pre-computed threshold check results and must determine which "
-        f"permits are required. Be concise. Cite specific rules. Output valid JSON only.\n\n"
+        f"permits are required.\n\n"
+        f"Use the ReAct pattern with the precomputed threshold data provided:\n"
+        f"- THOUGHT: State what you're evaluating and why\n"
+        f"- REFERENCE: Cite the relevant precomputed result (threshold check, CEQA exemption, SIC trigger) and its value\n"
+        f"- OBSERVATION: Analyze what the precomputed result means for this agency\n"
+        f"- THOUGHT: Draw a conclusion and move to the next agency\n\n"
+        f"Be concise. Cite specific rules. Output valid JSON only.\n\n"
         f"{county_config.regulationsKB}"
     )
 
@@ -168,11 +174,12 @@ async def run_reasoner(
             emitter.emit_thought(AGENT_NAME, f"{group['name']} analysis complete.")
 
             parsed = _extract_json(content)
-            if not parsed:
+            if not isinstance(parsed, dict) or "agency_analyses" not in parsed:
                 emitter.emit_thought(
                     AGENT_NAME,
-                    f"Warning: Failed to parse {group['name']} analysis output.",
+                    f"Warning: {group['name']} output missing expected agency_analyses structure.",
                 )
+                parsed = None
         except Exception as e:
             emitter.emit_thought(
                 AGENT_NAME,
