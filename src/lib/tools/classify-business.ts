@@ -1,0 +1,126 @@
+import sicCodesData from "../data/sic-codes.json";
+
+interface SICEntry {
+  code: string;
+  description: string;
+  category: string;
+  scaqmd_permit_likely: boolean;
+  igp_regulated: boolean;
+  pretreatment_category: string | null;
+  common_emissions: string[];
+  common_waste_streams: string[];
+}
+
+interface ClassifyBusinessInput {
+  business_activity: string;
+  key_processes?: string[];
+  is_manufacturing: boolean;
+  is_construction: boolean;
+  is_commercial_service: boolean;
+}
+
+interface ClassifyBusinessResult {
+  sic_code: string;
+  sic_description: string;
+  category: string;
+  regulatory_flags: {
+    scaqmd_permit_likely: boolean;
+    igp_regulated: boolean;
+    has_pretreatment_standard: boolean;
+    pretreatment_category: string | null;
+  };
+  common_emissions: string[];
+  common_waste_streams: string[];
+  confidence: "high" | "medium" | "low";
+  alternatives: Array<{ code: string; description: string; score: number }>;
+}
+
+const sicCodes = sicCodesData as SICEntry[];
+
+export function classifyBusiness(input: ClassifyBusinessInput): ClassifyBusinessResult {
+  const activity = input.business_activity.toLowerCase();
+  const activityWords = activity.split(/\s+/).filter(w => w.length > 3);
+  const processes = (input.key_processes || []).map(p => p.toLowerCase());
+
+  const scored = sicCodes.map(entry => {
+    let score = 0;
+    const desc = entry.description.toLowerCase();
+    const cat = entry.category.toLowerCase();
+
+    // Word matches in description
+    for (const word of activityWords) {
+      if (desc.includes(word)) score += 10;
+      if (cat.includes(word)) score += 5;
+    }
+
+    // Process matches against common emissions/waste
+    for (const proc of processes) {
+      for (const emission of entry.common_emissions) {
+        if (emission.toLowerCase().includes(proc) || proc.includes(emission.toLowerCase().split(" ")[0])) {
+          score += 3;
+        }
+      }
+      for (const waste of entry.common_waste_streams) {
+        if (waste.toLowerCase().includes(proc) || proc.includes(waste.toLowerCase().split(" ")[0])) {
+          score += 3;
+        }
+      }
+    }
+
+    // Category bonuses
+    const codeNum = parseInt(entry.code);
+    if (input.is_manufacturing && codeNum >= 2000 && codeNum <= 3999) score += 8;
+    if (input.is_construction && codeNum >= 1500 && codeNum <= 1799) score += 8;
+    if (input.is_commercial_service && codeNum >= 5000 && codeNum <= 8999) score += 8;
+
+    return { entry, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  const alternatives = scored
+    .slice(1, 4)
+    .filter(s => s.score > 0)
+    .map(s => ({ code: s.entry.code, description: s.entry.description, score: s.score }));
+
+  const confidence: "high" | "medium" | "low" =
+    best.score >= 20 ? "high" : best.score >= 10 ? "medium" : "low";
+
+  // Fallback for unmatched
+  if (best.score === 0) {
+    const fallbackCode = input.is_manufacturing ? "3999" : "9999";
+    const fallbackDesc = input.is_manufacturing ? "Manufacturing Industries, NEC" : "Nonclassifiable Establishments";
+    return {
+      sic_code: fallbackCode,
+      sic_description: fallbackDesc,
+      category: input.is_manufacturing ? "Miscellaneous Manufacturing" : "Unclassified",
+      regulatory_flags: {
+        scaqmd_permit_likely: input.is_manufacturing,
+        igp_regulated: input.is_manufacturing,
+        has_pretreatment_standard: false,
+        pretreatment_category: null,
+      },
+      common_emissions: [],
+      common_waste_streams: [],
+      confidence: "low",
+      alternatives: [],
+    };
+  }
+
+  return {
+    sic_code: best.entry.code,
+    sic_description: best.entry.description,
+    category: best.entry.category,
+    regulatory_flags: {
+      scaqmd_permit_likely: best.entry.scaqmd_permit_likely,
+      igp_regulated: best.entry.igp_regulated,
+      has_pretreatment_standard: best.entry.pretreatment_category !== null,
+      pretreatment_category: best.entry.pretreatment_category,
+    },
+    common_emissions: best.entry.common_emissions,
+    common_waste_streams: best.entry.common_waste_streams,
+    confidence,
+    alternatives,
+  };
+}

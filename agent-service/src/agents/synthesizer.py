@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 
@@ -80,22 +81,25 @@ async def run_synthesizer(
     core_project = project_description.split("Extracted from uploaded documents:")[0].strip()
 
     try:
-        response = await client.chat.completions.create(
-            model=NANO_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Create optimal permit filing sequence.\n\n"
-                        f"Project: {core_project}\n\n"
-                        f"Permit Determinations:\n{json.dumps(permit_result, indent=2)}"
-                    ),
-                },
-            ],
-            max_tokens=2048,
-            temperature=0.2,
-            top_p=0.9,
+        response = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=NANO_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Create optimal permit filing sequence.\n\n"
+                            f"Project: {core_project}\n\n"
+                            f"Permit Determinations:\n{json.dumps(permit_result, indent=2)}"
+                        ),
+                    },
+                ],
+                max_tokens=2048,
+                temperature=0.2,
+                top_p=0.9,
+            ),
+            timeout=60,
         )
 
         content = response.choices[0].message.content or ""

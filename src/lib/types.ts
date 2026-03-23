@@ -116,6 +116,87 @@ export interface ClassifierResult {
   classification: ProjectClassification;
 }
 
+// ── Expanded Classifier Output ──
+
+export interface EmissionsProfile {
+  likely_air_pollutants: string[];
+  likely_tacs: string[];
+  wastewater_types: string[];
+  has_fog: boolean;
+}
+
+export interface ExpandedClassification extends ProjectClassification {
+  project_summary: string;
+  key_operations: string[];
+  emissions_profile: EmissionsProfile;
+  building_sqft: number | null;
+  stories: number | null;
+  occupancy_type: string | null;
+  is_new_construction: boolean | null;
+}
+
+// ── Permit Analysis Instruction Set ──
+
+export interface RuleToEvaluate {
+  rule_id: string;
+  rule_name: string;
+  applies: boolean;
+  reason: string;
+  key_threshold: string;
+}
+
+export interface AgencyInstruction {
+  agency_id: string;
+  agency_name: string;
+  triggered: boolean;
+  priority: "critical" | "important" | "recommended" | "not_applicable";
+  analysis_instructions: string;
+  rules_to_evaluate: RuleToEvaluate[];
+  expected_permits: string[];
+  key_questions: string[];
+}
+
+export interface LocationContext {
+  county: CountyId;
+  county_name: string;
+  air_district: string;
+  air_district_code: string;
+  water_board: string;
+  water_board_code: string;
+  watershed: string | null;
+  nearest_303d_waterbody: string | null;
+  waterbody_impairments: string[];
+  is_303d_watershed: boolean;
+  near_school_1000ft: boolean;
+  school_distance_ft: number | null;
+  near_waterway_50ft: boolean;
+  in_coastal_zone: boolean;
+}
+
+export interface ProjectScale {
+  facility_sqft: number | null;
+  land_disturbance_acres: number;
+  is_new_construction: boolean | null;
+  is_renovation: boolean;
+  stories: number | null;
+  occupancy_type: string | null;
+}
+
+export interface PermitAnalysisInstructionSet {
+  case_id: string;
+  generated_by: "classifier-agent";
+  timestamp: string;
+  confidence: "high" | "medium" | "low";
+  project_summary: string;
+  classification: ExpandedClassification;
+  emissions_profile: EmissionsProfile;
+  location_context: LocationContext;
+  scale: ProjectScale;
+  agency_instructions: AgencyInstruction[];
+  warnings: string[];
+  unknowns: string[];
+}
+
 export interface ReasoningStep {
   type: "thought" | "action" | "observation";
   content: string;
@@ -155,6 +236,7 @@ export interface SynthesisResult {
 
 export interface PermitAnalysis {
   classification: ClassifierResult;
+  instruction_set?: PermitAnalysisInstructionSet;
   agency_analyses: AgencyAnalysis[];
   synthesis: SynthesisResult;
 }
@@ -166,7 +248,8 @@ export type AgentEventType =
   | "tool_result"
   | "agent_complete"
   | "final_result"
-  | "error";
+  | "error"
+  | "model_route";
 
 export interface AgentEvent {
   type: AgentEventType;

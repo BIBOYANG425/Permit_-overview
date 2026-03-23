@@ -39,6 +39,9 @@ class SSEEmitter:
     def emit_error(self, error: str, agent: str | None = None) -> None:
         self.emit(AgentEvent(type="error", error=error, agent=agent))
 
+    def emit_model_route(self, agent: str, model: str, content: str) -> None:
+        self.emit(AgentEvent(type="model_route", agent=agent, model=model, content=content))
+
     # ── Async generator for streaming ──
 
     async def stream(self) -> AsyncGenerator[str, None]:

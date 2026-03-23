@@ -20,50 +20,34 @@ def _get_client() -> AsyncOpenAI:
     )
 
 
-def _get_agency_groups(
-    county_config: CountyConfig,
-    city_config: CityConfig | None,
-) -> list[dict]:
+def _get_agency_groups(instruction_set: dict, city_config: CityConfig | None) -> list[dict]:
+    """Build parallel analysis groups from instruction set agency_instructions."""
+    agency_map = {ai["agency_id"]: ai for ai in instruction_set.get("agency_instructions", [])}
+
     groups = [
         {
             "name": "Air & Water",
-            "agencies": [
-                f"{county_config.airDistrict.name} ({county_config.airDistrict.code})",
-                f"{county_config.waterBoard.name} ({county_config.waterBoard.code})",
-            ],
-            "tool_keys": ["air_permit", "dust", "tac", "igp", "cgp"],
+            "agency_ids": ["air_district", "water_board"],
+            "instructions": [agency_map.get("air_district"), agency_map.get("water_board")],
         },
         {
             "name": "Sanitation & CEQA",
-            "agencies": [
-                f"{county_config.wastewater.name} ({county_config.wastewater.code})",
-                "CEQA Lead Agency (CEQA)",
-            ],
-            "tool_keys": ["sanitation", "ceqa"],
+            "agency_ids": ["wastewater", "ceqa"],
+            "instructions": [agency_map.get("wastewater"), agency_map.get("ceqa")],
         },
         {
             "name": "Waterways & HazMat",
-            "agencies": [
-                "CDFW + US Army Corps (CDFW_USACE)",
-                f"{county_config.fireCupa.name} ({county_config.fireCupa.code})",
-            ],
-            "tool_keys": ["cdfw", "usace", "fire_hazmat", "fire_hazwaste"],
+            "agency_ids": ["cdfw_usace", "cupa"],
+            "instructions": [agency_map.get("cdfw_usace"), agency_map.get("cupa")],
         },
     ]
 
-    if city_config:
-        groups.append(
-            {
-                "name": "City Permits & Fire",
-                "agencies": [
-                    f"{city_config.buildingDept.name} (Building)",
-                    f"{city_config.planningDept.name} (Planning)",
-                    f"{city_config.fireDept.name} (Fire)",
-                    f"{city_config.publicWorks.name} (PublicWorks)",
-                ],
-                "tool_keys": ["city_permits", "fire_review"],
-            }
-        )
+    if city_config and agency_map.get("city_permits"):
+        groups.append({
+            "name": "City Permits & Fire",
+            "agency_ids": ["city_permits"],
+            "instructions": [agency_map.get("city_permits")],
+        })
 
     return groups
 
@@ -78,96 +62,125 @@ def _split_document_context(project_desc: str) -> tuple[str, str]:
 def _build_agency_prompt(
     group: dict,
     core_project: str,
-    classification: dict,
-    tool_results: dict,
+    instruction_set: dict,
     document_context: str,
 ) -> str:
-    relevant = {k: tool_results.get(k) for k in group["tool_keys"]}
+    """Build a prompt from instruction set agency instructions."""
+    instructions = [i for i in group["instructions"] if i is not None]
+    project_summary = instruction_set.get("project_summary", "")
 
-    prompt = f"""Analyze permit requirements for ONLY these agencies: {', '.join(group['agencies'])}
+    prompt = f"Project: {core_project}\n\n"
+    if project_summary:
+        prompt += f"Project Summary: {project_summary}\n\n"
 
-Project: {core_project}
+    for inst in instructions:
+        prompt += f"=== {inst['agency_name']} ===\n"
+        prompt += f"Triggered: {inst['triggered']}\n"
+        prompt += f"Priority: {inst['priority']}\n"
+        prompt += f"Instructions: {inst['analysis_instructions']}\n\n"
 
-Classification: {json.dumps(classification, indent=2)}
+        if inst.get("rules_to_evaluate"):
+            prompt += "Rules to evaluate:\n"
+            for rule in inst["rules_to_evaluate"]:
+                prompt += (
+                    f"- {rule['rule_id']}: {rule['rule_name']} "
+                    f"(applies: {rule['applies']}, reason: {rule['reason']})\n"
+                )
+            prompt += "\n"
 
-Pre-computed threshold results (already evaluated — use these directly, do NOT re-check):
-{json.dumps(relevant, indent=2)}"""
+        if inst.get("expected_permits"):
+            prompt += f"Expected permits: {', '.join(inst['expected_permits'])}\n"
+
+        if inst.get("key_questions"):
+            prompt += "Key questions to answer:\n"
+            for q in inst["key_questions"]:
+                prompt += f"- {q}\n"
+        prompt += "\n"
 
     if document_context:
-        prompt += f"""
+        prompt += (
+            f"\nUPLOADED DOCUMENT CONTEXT (use these details to inform your analysis):\n"
+            f"{document_context}\n"
+        )
 
-UPLOADED DOCUMENT CONTEXT (use these details to inform your analysis — they may contain chemical inventories, equipment specs, process descriptions, or site plans that affect permit requirements):
-{document_context}"""
-
-    prompt += f"""
-
-Based on these threshold results{' and uploaded document details' if document_context else ''}, determine which permits are required for each agency.
+    prompt += """
+For each agency, answer the key questions and determine which permits are required.
+If triggered is false, briefly confirm why and skip detailed analysis.
 For each permit, state: permit_name, required (boolean), confidence, reason (cite specific rule), timeline_weeks, forms, priority, estimated_cost.
 
 Output JSON:
-{{
+{
   "agency_analyses": [
-    {{
+    {
       "agency": "Full Name",
       "agency_code": "CODE",
-      "reasoning_chain": [{{"type":"thought","content":"..."}}],
-      "permits": [{{ "permit_name":"...", "required":true, "confidence":"high", "reason":"...", "timeline_weeks":12, "forms":["..."], "priority":"critical", "estimated_cost":"$X" }}]
-    }}
+      "reasoning_chain": [{"type":"thought","content":"..."}],
+      "permits": [{ "permit_name":"...", "required":true, "confidence":"high", "reason":"...", "timeline_weeks":12, "forms":["..."], "priority":"critical", "estimated_cost":"$X" }]
+    }
   ]
-}}"""
+}"""
     return prompt
 
 
 async def run_reasoner(
     project_description: str,
     classification: dict,
-    tool_results: dict,
+    instruction_set: dict,
     county_config: CountyConfig,
     city_config: CityConfig | None,
     emitter: SSEEmitter,
 ) -> dict:
-    """Run parallel permit analysis across agency groups."""
+    """Run parallel permit analysis across agency groups using instruction set."""
     client = _get_client()
 
+    n_agencies = len(instruction_set.get("agency_instructions", []))
     emitter.emit_agent_start(AGENT_NAME, SUPER_MODEL)
     emitter.emit_thought(
         AGENT_NAME,
-        f"Pre-computed {len(tool_results)} threshold checks across all agencies. "
+        f"Received instruction set with {n_agencies} agency instructions. "
         f"Running parallel analysis...",
     )
 
     system_prompt = (
         f"You are an expert {county_config.name} environmental permit analyst.\n"
-        f"You receive pre-computed threshold check results and must determine which "
-        f"permits are required.\n\n"
-        f"Use the ReAct pattern with the precomputed threshold data provided:\n"
+        f"You receive a Permit Analysis Instruction Set from the Classifier Agent.\n\n"
+        f"For each agency section:\n"
+        f"- Read the analysis_instructions carefully — they contain county-specific guidance\n"
+        f"- Evaluate each rule in rules_to_evaluate\n"
+        f"- Answer each question in key_questions\n"
+        f"- If triggered is false, briefly confirm why and skip detailed analysis\n"
+        f"- DO NOT use LA County rules for Ventura County projects or vice versa\n\n"
+        f"Use the ReAct pattern:\n"
         f"- THOUGHT: State what you're evaluating and why\n"
-        f"- REFERENCE: Cite the relevant precomputed result (threshold check, CEQA exemption, SIC trigger) and its value\n"
-        f"- OBSERVATION: Analyze what the precomputed result means for this agency\n"
+        f"- REFERENCE: Cite the relevant rule and its threshold\n"
+        f"- OBSERVATION: Analyze what the result means for this agency\n"
         f"- THOUGHT: Draw a conclusion and move to the next agency\n\n"
         f"Be concise. Cite specific rules. Output valid JSON only.\n\n"
         f"{county_config.regulationsKB}"
     )
 
-    groups = _get_agency_groups(county_config, city_config)
+    groups = _get_agency_groups(instruction_set, city_config)
     core_project, document_context = _split_document_context(project_description)
 
     async def analyze_group(group: dict) -> dict:
         user_msg = _build_agency_prompt(
-            group, core_project, classification, tool_results, document_context
+            group, core_project, instruction_set, document_context
         )
         emitter.emit_thought(AGENT_NAME, f"Analyzing {group['name']}...")
 
         try:
-            response = await client.chat.completions.create(
-                model=SUPER_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg},
-                ],
-                max_tokens=3000,
-                temperature=0.2,
-                top_p=0.9,
+            response = await asyncio.wait_for(
+                client.chat.completions.create(
+                    model=SUPER_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    max_tokens=3000,
+                    temperature=0.2,
+                    top_p=0.9,
+                ),
+                timeout=120,
             )
 
             content = response.choices[0].message.content or ""
