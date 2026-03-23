@@ -121,11 +121,12 @@ async def run_pipeline(
             )
 
         # 5. Pre-compute instruction set
-        classifier_city = (
-            classification_result.get("classification", {}).get("city", "")
-            if isinstance(classification_result, dict)
-            else ""
-        )
+        classifier_city = ""
+        if isinstance(classification_result, dict):
+            classifier_city = (
+                classification_result.get("city", "")
+                or classification_result.get("classification", {}).get("city", "")
+            )
         resolved_city = city_config.cityName or classifier_city or city
         if not resolved_city:
             resolved_city = f"{county_config.name} Unincorporated"

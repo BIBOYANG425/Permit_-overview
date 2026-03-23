@@ -153,7 +153,9 @@ const OPERATION_EMISSIONS: Record<string, { air: string[]; water: string[]; hazm
 
 function fuzzyMatchOperation(op: string): string | null {
   const normalized = op.toLowerCase().replace(/[^a-z\s]/g, "").trim();
-  const opWords = normalized.split(/\s+/);
+  if (!normalized) return null;
+  const opWords = normalized.split(/\s+/).filter(Boolean);
+  if (opWords.length === 0) return null;
 
   let bestKey: string | null = null;
   let bestScore = 0;
@@ -228,7 +230,6 @@ export function identifyEmissions(input: IdentifyEmissionsInput): IdentifyEmissi
   }
 
   if (input.stores_chemicals) {
-    triggers.exceeds_hazmat_thresholds = true;
     hazmatSet.add("stored chemicals (per business inventory)");
   }
 

@@ -46,7 +46,7 @@ export function determineTriggers(input: DetermineTriggersInput): DetermineTrigg
   const igpRegulated = inManufacturingRange || inTransportRange || isRecycling || input.sic_code === "4953" || input.sic_code === "5171";
 
   // Air District
-  const airTriggered = input.has_air_emissions || input.is_construction || inManufacturingRange;
+  const airTriggered = input.has_air_emissions || input.is_construction || inManufacturingRange || input.has_tac === true;
   const airReasons: string[] = [];
   if (input.has_air_emissions) airReasons.push("Facility has equipment with air emissions — Permit to Construct/Operate required");
   if (input.has_tac) airReasons.push("Toxic Air Contaminant emissions — Rule 1401 new source review required");
@@ -59,7 +59,7 @@ export function determineTriggers(input: DetermineTriggersInput): DetermineTrigg
   };
 
   // RWQCB
-  const rwqcbTriggered = igpRegulated || (input.is_construction && (input.disturbance_acres || 0) >= 1) || input.near_waterway;
+  const rwqcbTriggered = igpRegulated || (input.is_construction && (input.disturbance_acres || 0) >= 1) || input.near_waterway || input.is_303d_watershed === true;
   const rwqcbReasons: string[] = [];
   if (igpRegulated) rwqcbReasons.push(`SIC ${input.sic_code} is in IGP regulated category — SWPPP + SMARTS enrollment required`);
   if (input.is_construction && (input.disturbance_acres || 0) >= 1) rwqcbReasons.push(`Construction disturbing ${input.disturbance_acres}+ acres — Construction General Permit required`);
@@ -72,7 +72,7 @@ export function determineTriggers(input: DetermineTriggersInput): DetermineTrigg
   };
 
   // Sanitation Districts
-  const sanitationTriggered = input.has_process_wastewater === true || input.has_fog === true;
+  const sanitationTriggered = input.has_process_wastewater === true || input.has_fog === true || input.has_heavy_metals_in_water === true;
   const sanitationReasons: string[] = [];
   if (input.has_process_wastewater) sanitationReasons.push("Process wastewater discharge to sewer — Industrial Wastewater Discharge Permit required");
   if (input.has_heavy_metals_in_water) sanitationReasons.push("Heavy metals in wastewater — EPA categorical pretreatment standards apply");

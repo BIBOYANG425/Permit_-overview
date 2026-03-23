@@ -8,6 +8,9 @@ export async function POST(req: NextRequest) {
     if (!sic_code || !Array.isArray(operations) || operations.length === 0) {
       return NextResponse.json({ error: "sic_code (string) and operations (non-empty array) are required" }, { status: 400 });
     }
+    if (!operations.every((op: unknown) => typeof op === "string" && op.trim().length > 0)) {
+      return NextResponse.json({ error: "Every operation must be a non-empty string" }, { status: 400 });
+    }
     const result = identifyEmissions({
       sic_code,
       operations,
