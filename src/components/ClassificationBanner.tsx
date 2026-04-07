@@ -11,6 +11,14 @@ interface ClassificationData {
   location_type?: string;
   waterway_name?: string | null;
   school_distance_ft?: number | null;
+  project_summary?: string;
+  key_operations?: string[];
+  emissions_profile?: {
+    likely_air_pollutants?: string[];
+    likely_tacs?: string[];
+    wastewater_types?: string[];
+    has_fog?: boolean;
+  };
 }
 
 export default function ClassificationBanner({
@@ -31,6 +39,20 @@ export default function ClassificationBanner({
       <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-3">
         Project Classification
       </h3>
+
+      {classification.project_summary && (
+        <p className="text-sm text-slate-300 mb-3">{classification.project_summary}</p>
+      )}
+
+      {classification.key_operations && classification.key_operations.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {classification.key_operations.map((op, i) => (
+            <span key={i} className="px-2 py-0.5 text-xs font-mono bg-slate-800/50 text-slate-400 rounded">
+              {op}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
         <div>
@@ -90,6 +112,27 @@ export default function ClassificationBanner({
           </span>
         )}
       </div>
+
+      {classification.emissions_profile && (
+        (classification.emissions_profile.likely_air_pollutants?.length ?? 0) > 0 ||
+        (classification.emissions_profile.likely_tacs?.length ?? 0) > 0
+      ) && (
+        <div className="mt-3 pt-3 border-t border-slate-800">
+          <span className="text-slate-600 text-xs block mb-1">Emissions Profile</span>
+          <div className="flex flex-wrap gap-1">
+            {classification.emissions_profile.likely_air_pollutants?.map((p, i) => (
+              <span key={`ap-${i}`} className="px-1.5 py-0.5 text-xs font-mono bg-orange-950/30 text-orange-400 rounded">
+                {p}
+              </span>
+            ))}
+            {classification.emissions_profile.likely_tacs?.map((t, i) => (
+              <span key={`tac-${i}`} className="px-1.5 py-0.5 text-xs font-mono bg-red-950/30 text-red-400 rounded">
+                TAC: {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,7 +18,14 @@ export function isValidCountyId(value: unknown): value is CountyId {
 export function detectCountyFromAddress(address: string): CountyId {
   const lower = address.toLowerCase();
   // Use word-boundary matching to avoid false positives (e.g., "Ventura Blvd" in LA)
-  const venturaKeywords = ["oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark", "ojai", "santa paula", "fillmore", "port hueneme"];
+  const venturaKeywords = [
+    "oxnard", "thousand oaks", "simi valley", "camarillo", "moorpark",
+    "ojai", "santa paula", "fillmore", "port hueneme",
+    "somis", "piru", "oak park", "newbury park",
+    "el rio", "saticoy", "meiners oaks", "oak view",
+    "casitas springs", "casa conejo", "bell canyon",
+    "lake sherwood", "channel islands", "mira monte",
+  ];
   // Check city names with word boundaries
   for (const kw of venturaKeywords) {
     const regex = new RegExp(`\\b${kw}\\b`, "i");

@@ -262,6 +262,8 @@ export default function PermitResults({ data }: { data: PermitAnalysis | null })
   const requiredCount = permits.length;
   const agencyCount = new Set(permits.map((p) => p.agencyCode)).size;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const instructionSet: any = (data as any).instruction_set ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const synthesis: any = (data as any).synthesis ?? null;
 
   return (
@@ -311,7 +313,35 @@ export default function PermitResults({ data }: { data: PermitAnalysis | null })
         </div>
       )}
 
-      {/* Warnings */}
+      {/* Classification Warnings */}
+      {instructionSet?.warnings?.length > 0 && (
+        <div>
+          <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Classification Warnings</h3>
+          <div className="space-y-2">
+            {instructionSet.warnings.map((w: string, i: number) => (
+              <div key={i} className="bg-amber-950/20 border border-amber-900/30 rounded-md px-3 py-2 text-sm text-amber-300">
+                {w}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Data Gaps */}
+      {instructionSet?.unknowns?.length > 0 && (
+        <div>
+          <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Data Gaps</h3>
+          <div className="space-y-2">
+            {instructionSet.unknowns.map((u: string, i: number) => (
+              <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded-md px-3 py-2 text-sm text-slate-400">
+                {u}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Synthesis Warnings */}
       {synthesis?.warnings?.length > 0 && (
         <div>
           <h3 className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Warnings & Risks</h3>

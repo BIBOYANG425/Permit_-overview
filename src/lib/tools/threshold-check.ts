@@ -1,7 +1,7 @@
 import { CountyConfig } from "../types";
 
 interface ThresholdCheckInput {
-  agency: "SCAQMD" | "VCAPCD" | "RWQCB" | "RWQCB-3" | "Sanitation" | "VC_EH" | "CDFW" | "USACE" | "Fire_CUPA" | "VC_EH_CUPA" | (string & {});
+  agency: "SCAQMD" | "VCAPCD" | "RWQCB" | "Sanitation" | "VC_EH" | "CDFW" | "USACE" | "Fire_CUPA" | "VC_EH_CUPA" | (string & {});
   check_type: string;
   sic_code?: string;
   disturbance_acres?: number;
@@ -90,7 +90,6 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
     }
 
     // ===== RWQCB (Region 4 / Region 3) =====
-    case "RWQCB-3:industrial_stormwater":
     case "RWQCB:industrial_stormwater": {
       const igpSicRanges = [
         [2000, 3999], [4000, 4999], [5015, 5015], [5093, 5093],
@@ -112,7 +111,6 @@ export function thresholdCheck(input: ThresholdCheckInput): ThresholdCheckResult
       };
     }
 
-    case "RWQCB-3:construction_stormwater":
     case "RWQCB:construction_stormwater": {
       const acreage = input.disturbance_acres || 0;
       const triggered = acreage >= 1;

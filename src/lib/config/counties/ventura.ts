@@ -8,16 +8,16 @@ export const VENTURA_COUNTY_CONFIG: CountyConfig = {
     name: "Ventura County Air Pollution Control District",
     code: "VCAPCD",
     rules: {
-      dust: "Rule 51",
-      tac: "Rule 26.11",
+      dust: "Rule 55",
+      tac: "Rule 56",
       nsr: "Rule 26",
     },
   },
 
   waterBoard: {
-    name: "Central Coast RWQCB Region 3",
-    code: "RWQCB-3",
-    region: 3,
+    name: "Los Angeles RWQCB Region 4",
+    code: "RWQCB",
+    region: 4,
   },
 
   wastewater: {
@@ -82,6 +82,14 @@ export const VENTURA_COUNTY_CONFIG: CountyConfig = {
         "metals",
         "pesticides",
         "nutrients",
+        "chlorpyrifos",
+        "OC pesticides",
+        "sulfates",
+        "boron",
+        "TDS",
+        "bacteria",
+        "sedimentation",
+        "toxicity",
       ],
       drainage_area: [
         "Conejo Valley (Thousand Oaks)",
@@ -192,8 +200,9 @@ Jurisdiction: Ventura County (entirely within Ventura County boundaries)
 
 ### Key Rules:
 - **Rule 26 — New Source Review (NSR)**: New or modified stationary sources of air pollution must obtain an Authority to Construct (ATC) and a Permit to Operate (PTO). NSR applies to any new emissions unit or modification that increases emissions. BACT (Best Available Control Technology) required for new/modified sources exceeding NSR thresholds.
-- **Rule 26.11 — Toxic Air Contaminants — New Source Review**: New or modified sources emitting toxic air contaminants must undergo a Health Risk Assessment (HRA). Maximum Individual Cancer Risk (MICR) must not exceed 10-in-a-million. Near-school threshold of 1-in-a-million applies within 1,000 feet of K-12 schools. Listed TACs include: lead, hexavalent chromium, benzene, formaldehyde, perchloroethylene, trichloroethylene, cadmium, arsenic, nickel.
-- **Rule 51 — Nuisance / Fugitive Dust**: No person shall discharge air contaminants that cause injury, detriment, nuisance, or annoyance. Applies to all ground-disturbing activities — dust control measures (watering, stabilization, wind barriers) required for any construction or grading. Large operations (≥10 acres) require enhanced dust control plans submitted to VCAPCD.
+- **Rule 56 — Toxic Air Contaminants — New Source Review**: New or modified sources emitting toxic air contaminants must undergo a Health Risk Assessment (HRA). Maximum Individual Cancer Risk (MICR) must not exceed 10-in-a-million. Near-school threshold of 1-in-a-million applies within 1,000 feet of K-12 schools. Listed TACs include: lead, hexavalent chromium, benzene, formaldehyde, perchloroethylene, trichloroethylene, cadmium, arsenic, nickel.
+- **Rule 55 — Fugitive Dust**: Applies to all ground-disturbing activities — dust control measures (watering, stabilization, wind barriers) required for any construction or grading. Large operations (≥10 acres) require enhanced dust control plans submitted to VCAPCD.
+- **Rule 51 — Nuisance**: No person shall discharge air contaminants that cause injury, detriment, nuisance, or annoyance to the public. Applies to odors, visible emissions, and other nuisance conditions.
 - **Rule 10 — Permits Required**: Authority to Construct required before installing, altering, or replacing any equipment that may emit air contaminants. Permit to Operate required before operating such equipment.
 - **Rule 74.2 — Architectural Coatings**: Limits VOC content of architectural coatings.
 - **Rule 74.6 — Surface Coating of Metal Parts and Products**: Limits VOC emissions from industrial coating operations on metal substrates.
@@ -211,7 +220,7 @@ Jurisdiction: Ventura County (entirely within Ventura County boundaries)
 6. Install/modify equipment and pass inspection
 7. Permit to Operate (PTO) issued
 
-## Agency 2: Central Coast Regional Water Quality Control Board (RWQCB Region 3)
+## Agency 2: Los Angeles Regional Water Quality Control Board (RWQCB Region 4)
 Jurisdiction: Ventura County watersheds (Santa Clara River, Ventura River, Calleguas Creek, coastal lagoons)
 
 ### Key Permits:
@@ -295,5 +304,38 @@ Jurisdiction: Ventura County Environmental Health Division serves as the CUPA fo
   - Conditionally Exempt (CE): Small volume treatment meeting specific conditions
   - Conditionally Authorized (CA): Treatment operations meeting specified conditions with CUPA notification
   - Permit by Rule (PBR): Treatment requiring CUPA permit and RWQCB concurrence
+
+## VCAPCD vs SCAQMD Key Differences
+| Factor | SCAQMD (LA County) | VCAPCD (Ventura County) |
+|--------|-------------------|------------------------|
+| Permit names | Permit to Construct / Permit to Operate | Authority to Construct / Permit to Operate |
+| Fugitive dust | Rule 403 | Rule 55 (Fugitive Dust) |
+| TAC new source review | Rule 1401 / 1401.1 | Rule 56 (Toxic Air Contaminants) |
+| School proximity | Rule 1401.1 (1,000 ft, 1-in-a-million) | Rule 56 standard threshold applies near schools |
+| Nuisance / odor | Rule 402 | Rule 51 (Nuisance) |
+| Terminology | Uses "VOC" | Uses "ROC" (Reactive Organic Compounds) — functionally similar but legally distinct |
+| RECLAIM | Yes (being phased out) | No RECLAIM program |
+
+## Ventura County — City-Specific Wastewater Agencies
+Ventura County does NOT have a single countywide sanitation district like LA County. Wastewater is handled by different agencies depending on the city:
+- **Oxnard**: City of Oxnard Wastewater Division — operates Oxnard Wastewater Treatment Plant
+- **Ventura (San Buenaventura) / Ojai**: Ventura Regional Sanitation District (VRSD) — operates Ventura Water Reclamation Facility
+- **Camarillo / Somis**: Camrosa Water District
+- **Simi Valley / Moorpark**: Ventura County Waterworks District No. 8
+- **Fillmore / Santa Paula**: Local city wastewater systems
+- **Unincorporated areas**: Ventura County Environmental Health (onsite wastewater treatment systems)
+Pretreatment programs are administered locally — same federal categorical standards (40 CFR) apply, but the permitting agency differs from LA County.
+
+## Ventura County — Key Cities for Industrial Projects
+- **Oxnard**: Largest city. Significant manufacturing (agriculture-related, electronics, defense). Port Hueneme naval base nearby.
+- **Simi Valley**: Light manufacturing, tech, business parks.
+- **Camarillo**: Business parks, light industrial, logistics.
+- **Thousand Oaks**: Mostly commercial/biotech (Amgen headquarters). Less heavy industry.
+- **Ventura (San Buenaventura)**: Mixed — oil production, some manufacturing, services.
+- **Santa Paula**: Agricultural processing, smaller manufacturing.
+- **Moorpark**: Smaller scale industrial and business parks.
+
+### VCAPCD Air Quality Assessment Guidelines for CEQA
+VCAPCD publishes its own Air Quality Assessment Guidelines for CEQA analysis — these have DIFFERENT significance thresholds than SCAQMD guidelines. For Ventura County CEQA air quality analysis, use VCAPCD thresholds, NOT SCAQMD thresholds.
 `,
 };

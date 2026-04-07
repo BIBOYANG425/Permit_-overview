@@ -15,6 +15,7 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 
 # Run as non-root user
 RUN addgroup --system appuser && adduser --system --ingroup appuser appuser
