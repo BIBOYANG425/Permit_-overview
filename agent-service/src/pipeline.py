@@ -1,7 +1,7 @@
 from src.agents.classifier import run_classifier, NANO_MODEL, SUPER_MODEL
 from src.agents.reasoner import run_reasoner
 from src.agents.synthesizer import run_synthesizer
-from src.models.types import CityConfig, CountyConfig
+from src.models.types import CityConfig, CountyConfig, Document
 from src.streaming.sse_emitter import SSEEmitter
 from src.tools.precompute import precompute_tool_results
 from src.tools.rest_client import call_tool
@@ -17,12 +17,16 @@ _COMPLEXITY_PATTERNS = [
 ]
 
 
-def _route_classifier(project_description: str) -> tuple[str, str]:
+def _route_classifier(
+    project_description: str,
+    documents: list[Document] | None = None,
+) -> tuple[str, str]:
     """Pick starting model for classifier based on complexity signals."""
     import re
     score = 0
     signals = []
     desc = project_description.lower()
+    docs = documents or []
 
     # Short description penalty
     if len(desc) < 50:
@@ -40,6 +44,22 @@ def _route_classifier(project_description: str) -> tuple[str, str]:
     if len(domains) >= 3:
         score += len(domains)
         signals.append(f"{len(domains)} regulatory terms")
+
+    # Uploaded documents are a strong signal — users upload SDSs when they have
+    # hazmat, site plans when they have complex layouts. Scan the document text
+    # for SDS markers and CAS numbers so we can catch structured hazmat signals
+    # the prose description may have missed.
+    if docs:
+        score += min(len(docs), 3)
+        signals.append(f"{len(docs)} uploaded doc(s)")
+        combined_doc_text = " ".join(d.text for d in docs)[:20000].lower()
+        if re.search(r"safety\s+data\s+sheet|\bsds\b|\bmsds\b", combined_doc_text):
+            score += 2
+            signals.append("SDS content")
+        cas_hits = re.findall(r"\b\d{2,7}-\d{2}-\d\b", combined_doc_text)
+        if cas_hits:
+            score += min(len(cas_hits), 3)
+            signals.append(f"{len(cas_hits)} CAS number(s) in docs")
 
     if score >= 5:
         return SUPER_MODEL, f"High complexity (score {score}): starting with Super 49B"
@@ -86,11 +106,14 @@ async def run_pipeline(
     project_description: str,
     county: str = "la",
     city: str = "",
+    documents: list[Document] | None = None,
     emitter: SSEEmitter | None = None,
 ) -> None:
     """Orchestrate the full Model Router → Classifier → PreCompute → Reasoner → Synthesizer pipeline."""
     if emitter is None:
         emitter = SSEEmitter()
+
+    docs: list[Document] = documents or []
 
     try:
         # 1. Fetch county and city configs from Next.js
@@ -103,8 +126,20 @@ async def run_pipeline(
         city_data = await call_tool("city-config", city_params, method="GET")
         city_config = CityConfig(**city_data)
 
+        # Emit the document inventory so the live trace shows what the agents
+        # are actually reading. If docs are missing from the trace, the SDS
+        # bug is back.
+        if docs:
+            doc_summary = ", ".join(
+                f"{d.name} ({len(d.text):,} chars)" for d in docs
+            )
+            emitter.emit_thought(
+                "Pipeline",
+                f"Received {len(docs)} document(s): {doc_summary}",
+            )
+
         # 2. Model Router: pick starting model
-        start_model, route_reason = _route_classifier(project_description)
+        start_model, route_reason = _route_classifier(project_description, docs)
         emitter.emit_model_route("Model Router", start_model, route_reason)
 
         # 3. Run Classifier with routed model
@@ -113,6 +148,7 @@ async def run_pipeline(
             county_config=county_config,
             emitter=emitter,
             model=start_model,
+            documents=docs,
         )
 
         # 3a. Validate classifier output
@@ -127,6 +163,7 @@ async def run_pipeline(
                 county_config=county_config,
                 emitter=emitter,
                 model=SUPER_MODEL,
+                documents=docs,
             )
             if not isinstance(classification_result, dict) or "raw" in classification_result:
                 emitter.emit_error("Classifier failed to produce structured output after escalation")
@@ -141,6 +178,7 @@ async def run_pipeline(
                 county_config=county_config,
                 emitter=emitter,
                 model=SUPER_MODEL,
+                documents=docs,
             )
 
         # 5. Pre-compute instruction set
@@ -171,6 +209,7 @@ async def run_pipeline(
             county_config=county_config,
             city_config=city_config,
             emitter=emitter,
+            documents=docs,
         )
 
         # 7. Run Synthesizer

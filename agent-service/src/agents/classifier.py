@@ -1,10 +1,11 @@
 import asyncio
 import json
 import os
+import sys
 
 from openai import AsyncOpenAI
 
-from src.models.types import CountyConfig
+from src.models.types import CountyConfig, Document
 from src.streaming.sse_emitter import SSEEmitter
 from src.tools.classify_business import classify_business
 from src.tools.identify_emissions import identify_emissions
@@ -229,29 +230,68 @@ IMPORTANT: Call tools in order. Each tool's output informs the next.
 Use /no_think mode — do NOT output <think> tags."""
 
 
+def _pick(args: dict, *keys, default=None):
+    """Return the first present non-None value from a list of alias keys.
+
+    LLMs routinely hallucinate parameter names (e.g. `location` instead of
+    `city_or_area`, `key_operations` instead of `operations`). Rather than
+    hard-fail, we accept a small set of plausible aliases per field.
+    """
+    for k in keys:
+        if k in args and args[k] is not None:
+            return args[k]
+    return default
+
+
 async def _execute_tool(tool_name: str, args: dict, county: str) -> dict:
     if tool_name == "classify_business":
         return await classify_business(
-            business_activity=args.get("business_activity", ""),
-            key_processes=args.get("key_processes"),
-            is_manufacturing=args.get("is_manufacturing", False),
-            is_construction=args.get("is_construction", False),
-            is_commercial_service=args.get("is_commercial_service", False),
+            business_activity=_pick(args, "business_activity", "activity", "business", default=""),
+            key_processes=_pick(args, "key_processes", "processes", "operations"),
+            is_manufacturing=bool(_pick(args, "is_manufacturing", default=False)),
+            is_construction=bool(_pick(args, "is_construction", default=False)),
+            is_commercial_service=bool(_pick(args, "is_commercial_service", "is_service", default=False)),
         )
     elif tool_name == "identify_emissions_profile":
+        # The model sometimes calls this with `key_operations` instead of `operations`
+        # because the final-classification JSON schema contains a `key_operations`
+        # field and it cross-contaminates the tool-call param name. Accept both.
+        ops = _pick(args, "operations", "key_operations", "processes", default=[])
+        if not isinstance(ops, list):
+            ops = [ops] if isinstance(ops, str) else []
         return await identify_emissions(
-            sic_code=args.get("sic_code", ""),
-            operations=args.get("operations", []),
-            has_boiler_or_generator=args.get("has_boiler_or_generator", False),
-            has_refrigeration=args.get("has_refrigeration", False),
-            stores_chemicals=args.get("stores_chemicals", False),
+            sic_code=_pick(args, "sic_code", "sicCode", default=""),
+            operations=ops,
+            has_boiler_or_generator=bool(_pick(args, "has_boiler_or_generator", "has_boiler", default=False)),
+            has_refrigeration=bool(_pick(args, "has_refrigeration", default=False)),
+            stores_chemicals=bool(_pick(args, "stores_chemicals", "has_chemical_storage", default=False)),
         )
     elif tool_name == "check_location_context":
         return await check_location(
-            city_or_area=args.get("city_or_area", ""),
-            nearby_water_features=args.get("nearby_water_features", ""),
-            mentions_school=args.get("mentions_school", False),
-            school_distance_ft=args.get("school_distance_ft", -1),
+            city_or_area=_pick(
+                args,
+                "city_or_area",
+                "location",
+                "city",
+                "area",
+                "city_or_location",
+                "project_location",
+                "project_address",
+                "address",
+                "site_address",
+                "facility_address",
+                default="",
+            ),
+            nearby_water_features=_pick(
+                args,
+                "nearby_water_features",
+                "nearby_features",
+                "water_features",
+                "nearby_water",
+                default="",
+            ),
+            mentions_school=bool(_pick(args, "mentions_school", "near_school", "has_school_nearby", default=False)),
+            school_distance_ft=_pick(args, "school_distance_ft", "school_distance", default=-1),
             county=county,
         )
     elif tool_name == "determine_agency_triggers":
@@ -277,12 +317,52 @@ async def _execute_tool(tool_name: str, args: dict, county: str) -> dict:
     return {"error": f"Unknown tool: {tool_name}"}
 
 
+def _build_user_message(
+    project_description: str,
+    county_name: str,
+    documents: list[Document],
+) -> str:
+    """Build the classifier user message with a clearly-delimited documents block.
+
+    Documents are passed as first-class structured input, not welded into the
+    project description. Each document gets a header with its filename, page
+    count, and char count so the model can cite sources precisely.
+    """
+    parts = [
+        f"Classify this project for {county_name} environmental permitting.",
+        "",
+        "=== PROJECT DESCRIPTION ===",
+        project_description.strip() or "(no description provided)",
+    ]
+
+    if documents:
+        parts.append("")
+        parts.append(f"=== UPLOADED DOCUMENTS ({len(documents)} file(s)) ===")
+        parts.append(
+            "Treat these as authoritative source material. When calling tools, "
+            "cite chemical names, CAS numbers, equipment specs, and discharge "
+            "volumes that appear in these documents."
+        )
+        for i, doc in enumerate(documents, start=1):
+            page_info = f", {doc.pages} pages" if doc.pages else ""
+            parts.append("")
+            parts.append(
+                f"--- DOCUMENT {i}: {doc.name} ({len(doc.text):,} chars{page_info}) ---"
+            )
+            parts.append(doc.text)
+        parts.append("")
+        parts.append("=== END DOCUMENTS ===")
+
+    return "\n".join(parts)
+
+
 async def run_classifier(
     project_description: str,
     county_config: CountyConfig,
     emitter: SSEEmitter,
     model: str | None = None,
     max_iterations: int = 8,
+    documents: list[Document] | None = None,
 ) -> dict:
     """Run the classifier ReAct agent loop with the new 4-tool chain."""
     model_id = model or NANO_MODEL
@@ -293,15 +373,15 @@ async def run_classifier(
 
     emitter.emit_agent_start(AGENT_NAME, model_id)
 
+    user_message = _build_user_message(
+        project_description=project_description,
+        county_name=county_config.name,
+        documents=documents or [],
+    )
+
     messages: list[dict] = [
         {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": (
-                f"Classify this project for {county_config.name} "
-                f"environmental permitting:\n\n{project_description}"
-            ),
-        },
+        {"role": "user", "content": user_message},
     ]
 
     for _ in range(max_iterations):
@@ -368,8 +448,18 @@ async def run_classifier(
             continue
 
         # Final answer — no more tool calls
-        result = _extract_json(choice.message.content or "") or choice.message.content
-        result_dict = result if isinstance(result, dict) else {"raw": result}
+        raw_content = choice.message.content or ""
+        result = _extract_json(raw_content)
+        if result is None:
+            print(
+                f"[classifier] JSON extract failed (model={model_id}, len={len(raw_content)}): "
+                f"{raw_content[:800]!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+            result_dict = {"raw": raw_content}
+        else:
+            result_dict = result
         emitter.emit_agent_complete(AGENT_NAME, result_dict)
         return result_dict
 
@@ -386,7 +476,16 @@ async def run_classifier(
     content = final.choices[0].message.content or ""
     if content:
         emitter.emit_thought(AGENT_NAME, content)
-    result = _extract_json(content) or content
-    result_dict = result if isinstance(result, dict) else {"raw": result}
+    result = _extract_json(content)
+    if result is None:
+        print(
+            f"[classifier] JSON extract failed after max_iterations (model={model_id}, "
+            f"len={len(content)}): {content[:800]!r}",
+            file=sys.stderr,
+            flush=True,
+        )
+        result_dict = {"raw": content}
+    else:
+        result_dict = result
     emitter.emit_agent_complete(AGENT_NAME, result_dict)
     return result_dict

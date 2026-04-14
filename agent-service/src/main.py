@@ -33,6 +33,7 @@ async def analyze(request: Request):
             project_description=req.projectDescription,
             county=req.county,
             city=req.city,
+            documents=req.documents,
             emitter=emitter,
         )
 

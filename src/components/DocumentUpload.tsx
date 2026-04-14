@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
+import type { UploadedDocument } from "@/lib/types";
 
-export interface UploadedDocument {
-  name: string;
-  text: string;
-  pages?: number;
-}
+export type { UploadedDocument };
 
 export default function DocumentUpload({
   onDocumentsProcessed,

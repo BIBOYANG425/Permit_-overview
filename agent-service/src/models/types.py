@@ -195,10 +195,23 @@ class SynthesisResult(BaseModel):
 # ── Request/Response ──
 
 
+class Document(BaseModel):
+    """A document uploaded by the user (SDS, site plan, prior report, etc).
+
+    Text is the full extracted contents, not a preview — downstream agents
+    rely on seeing chemical names, CAS numbers, emission rates, etc.
+    """
+
+    name: str
+    text: str
+    pages: int | None = None
+
+
 class AnalyzeRequest(BaseModel):
     projectDescription: str
     county: str = "la"
     city: str = ""
+    documents: list[Document] = []
 
 
 # ── County/City Config Types (received from Next.js) ──
