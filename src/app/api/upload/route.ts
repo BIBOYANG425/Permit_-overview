@@ -2,6 +2,105 @@ import { NextResponse } from "next/server";
 
 const NVIDIA_OCR_API_KEY = process.env.NVIDIA_OCR_API_KEY || "";
 
+// Soft per-document cap. Full SDSs typically run 20-40k chars; we allow headroom
+// for longer technical specs while keeping any single document well inside the
+// model's context budget. Anything above this gets SDS-section-aware truncation
+// (or head+tail fallback for non-SDS documents).
+const DOC_CHAR_CAP = 50000;
+
+// SDS sections that drive permit triggers. Preserving these when we must cut:
+//   1  — Identification (product name, supplier)
+//   3  — Composition / hazardous ingredients (chemicals, CAS numbers)
+//   8  — Exposure controls / PPE (permissible exposure limits, TAC signals)
+//   9  — Physical/chemical properties (VOC content, flash point)
+//   11 — Toxicological information (TAC signals, carcinogens)
+//   15 — Regulatory information (CERCLA, SARA, Prop 65)
+const SDS_CRITICAL_SECTIONS = [1, 3, 8, 9, 11, 15];
+
+function looksLikeSDS(text: string): boolean {
+  const head = text.slice(0, 6000).toLowerCase();
+  return (
+    /safety\s+data\s+sheet/.test(head) ||
+    /\bsds\b/.test(head) ||
+    /section\s+1\b[^\n]{0,40}identification/.test(head)
+  );
+}
+
+/**
+ * Walk an SDS text and return contiguous ranges for each numbered section (1-16).
+ * Returns [] if the document doesn't have enough recognizable section headers.
+ */
+function findSDSSections(
+  text: string
+): { num: number; start: number; end: number }[] {
+  // Matches "SECTION 3" or "Section 3:" or "3. COMPOSITION" at the start of a line.
+  const headerRe = /(?:^|\n)[ \t]*(?:section\s+)?(\d{1,2})[\.\s:)]+\s*([A-Z][A-Z \/&()\-]{3,80})/gi;
+  const hits: { num: number; start: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = headerRe.exec(text)) !== null) {
+    const num = parseInt(m[1], 10);
+    if (num >= 1 && num <= 16) {
+      hits.push({ num, start: m.index });
+    }
+  }
+  if (hits.length < 6) return []; // not structured enough
+  const sections: { num: number; start: number; end: number }[] = [];
+  for (let i = 0; i < hits.length; i++) {
+    const cur = hits[i];
+    const next = hits[i + 1];
+    sections.push({ num: cur.num, start: cur.start, end: next ? next.start : text.length });
+  }
+  return sections;
+}
+
+/**
+ * Enforce the per-document char cap. If the document fits, return unchanged.
+ * Otherwise prefer SDS-section-aware truncation (keeping the sections that
+ * matter for permits). Fall back to a head+tail slice so we at least keep the
+ * product identification and the regulatory boilerplate at the end.
+ */
+function truncateDocumentText(text: string, cap: number = DOC_CHAR_CAP): string {
+  if (text.length <= cap) return text;
+
+  if (looksLikeSDS(text)) {
+    const sections = findSDSSections(text);
+    if (sections.length > 0) {
+      const kept = sections.filter((s) => SDS_CRITICAL_SECTIONS.includes(s.num));
+      if (kept.length > 0) {
+        let preserved = kept
+          .map((s) => text.slice(s.start, s.end).trim())
+          .join("\n\n");
+        const droppedNums = sections
+          .filter((s) => !SDS_CRITICAL_SECTIONS.includes(s.num))
+          .map((s) => s.num)
+          .join(", ");
+        const note = `\n\n[SDS truncated to critical sections ${SDS_CRITICAL_SECTIONS.join(", ")}. Sections ${droppedNums || "none"} dropped to fit ${cap}-char budget.]`;
+        // If the preserved content is itself oversize, fall through to head+tail.
+        if (preserved.length + note.length <= cap) {
+          return preserved + note;
+        }
+        // Still too big — trim the largest section until it fits.
+        const budget = cap - note.length;
+        if (preserved.length > budget) {
+          preserved = preserved.slice(0, budget - 40) + "\n[...section truncated...]";
+        }
+        return preserved + note;
+      }
+    }
+  }
+
+  // Fallback: 70% head + 30% tail so we keep both the intro and the closing
+  // (which often has regulatory citations, signatures, approvals).
+  const headSize = Math.floor(cap * 0.7);
+  const tailSize = cap - headSize - 80;
+  const dropped = text.length - headSize - tailSize;
+  return (
+    text.slice(0, headSize) +
+    `\n\n[... ${dropped.toLocaleString()} chars truncated ...]\n\n` +
+    text.slice(-tailSize)
+  );
+}
+
 async function extractWithNvidiaOCR(buffer: Buffer, fileName: string): Promise<string> {
   if (!NVIDIA_OCR_API_KEY) {
     return "";
@@ -71,12 +170,16 @@ export async function POST(req: Request) {
 
       if (fileName.endsWith(".pdf")) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pdfMod = await import("pdf-parse") as any;
-          const pdfParse = pdfMod.default || pdfMod;
-          const data = await pdfParse(buffer);
+          // pdf-parse v2.x is a class-based API from the mehmet-kozan fork.
+          // new PDFParse({ data }) then .getText() — the old v1 function form
+          // (await pdfParse(buffer)) throws TypeError on this package.
+          const { PDFParse } = await import("pdf-parse");
+          const parser = new PDFParse({ data: new Uint8Array(buffer) });
+          const result = await parser.getText();
+          await parser.destroy();
 
-          let text = data.text?.trim() || "";
+          let text = result.text?.trim() || "";
+          const pageCount = result.total;
 
           // If pdf-parse returned very little text, the PDF is likely scanned — try NVIDIA OCR
           if (text.length < 100 && NVIDIA_OCR_API_KEY) {
@@ -89,8 +192,8 @@ export async function POST(req: Request) {
           if (text.length > 0) {
             results.push({
               name: file.name,
-              text: text.slice(0, 15000),
-              pages: data.numpages,
+              text: truncateDocumentText(text),
+              pages: pageCount,
             });
           } else {
             results.push({
@@ -98,12 +201,13 @@ export async function POST(req: Request) {
               text: "[Could not parse PDF — file may be scanned/image-based]",
             });
           }
-        } catch {
+        } catch (err) {
+          console.error(`pdf-parse failed for ${file.name}:`, err);
           // Fallback to NVIDIA OCR for problematic PDFs
           if (NVIDIA_OCR_API_KEY) {
             const ocrText = await extractWithNvidiaOCR(buffer, file.name);
             if (ocrText.length > 0) {
-              results.push({ name: file.name, text: ocrText.slice(0, 15000) });
+              results.push({ name: file.name, text: truncateDocumentText(ocrText) });
             } else {
               results.push({
                 name: file.name,
@@ -128,7 +232,7 @@ export async function POST(req: Request) {
         if (NVIDIA_OCR_API_KEY) {
           const ocrText = await extractWithNvidiaOCR(buffer, file.name);
           if (ocrText.length > 0) {
-            results.push({ name: file.name, text: ocrText.slice(0, 15000) });
+            results.push({ name: file.name, text: truncateDocumentText(ocrText) });
           } else {
             results.push({
               name: file.name,
@@ -150,13 +254,13 @@ export async function POST(req: Request) {
         const text = new TextDecoder().decode(buffer);
         results.push({
           name: file.name,
-          text: text.slice(0, 15000),
+          text: truncateDocumentText(text),
         });
       } else if (fileName.endsWith(".doc") || fileName.endsWith(".docx")) {
         const text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
         const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
         if (cleaned.length > 50) {
-          results.push({ name: file.name, text: cleaned.slice(0, 15000) });
+          results.push({ name: file.name, text: truncateDocumentText(cleaned) });
         } else {
           results.push({
             name: file.name,

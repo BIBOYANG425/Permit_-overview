@@ -1,3 +1,17 @@
+// ── Uploaded Documents ──
+
+/**
+ * A document uploaded by the user (SDS, site plan, prior report, etc).
+ * `text` is the full extracted contents. Do NOT truncate before passing
+ * to agents — permit analysis depends on chemical names, CAS numbers,
+ * and emission rates that typically live past any short preview window.
+ */
+export interface UploadedDocument {
+  name: string;
+  text: string;
+  pages?: number;
+}
+
 // ── County & City Config Types ──
 
 export type CountyId = "la" | "ventura";

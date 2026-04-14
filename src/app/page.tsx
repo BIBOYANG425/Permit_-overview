@@ -272,13 +272,10 @@ export default function Home() {
       if (freeText.trim()) parts.push(`\n${freeText.trim()}`);
       if (guidedText) parts.push(`\nProject details:\n${guidedText}`);
 
-      if (uploadedDocs.length > 0) {
-        const docContext = uploadedDocs
-          .filter((d) => !d.text.startsWith("["))
-          .map((d) => `--- Document: ${d.name} ---\n${d.text}`)
-          .join("\n\n");
-        if (docContext) parts.push(`\nExtracted from uploaded documents:\n${docContext}`);
-      }
+      // Documents now flow as a first-class field. We no longer concat them
+      // into the projectDescription prose (the old path silently truncated
+      // SDSs at 15k chars and made chemical/CAS data hard for agents to find).
+      const validDocs = uploadedDocs.filter((d) => !d.text.startsWith("["));
 
       try {
         const response = await fetch("/api/analyze", {
@@ -288,6 +285,7 @@ export default function Home() {
             projectDescription: parts.join("\n"),
             county,
             city: detectedCity,
+            documents: validDocs,
           }),
         });
 

@@ -1,11 +1,9 @@
 import asyncio
-import json
 import os
-import re
 
 from openai import AsyncOpenAI
 
-from src.models.types import CityConfig, CountyConfig
+from src.models.types import CityConfig, CountyConfig, Document
 from src.streaming.sse_emitter import SSEEmitter
 from src.utils.json_parser import extract_json as _extract_json
 
@@ -52,18 +50,30 @@ def _get_agency_groups(instruction_set: dict, city_config: CityConfig | None) ->
     return groups
 
 
-def _split_document_context(project_desc: str) -> tuple[str, str]:
-    match = re.search(r"(?:\r?\n|^)\s*Extracted from uploaded documents:", project_desc)
-    if not match:
-        return project_desc, ""
-    return project_desc[: match.start()], project_desc[match.start() :]
+def _render_documents_block(documents: list[Document]) -> str:
+    """Render uploaded documents as a structured block for agency prompts."""
+    if not documents:
+        return ""
+    parts = [
+        "",
+        f"UPLOADED DOCUMENTS ({len(documents)} file(s)) — use these as authoritative source material:",
+    ]
+    for i, doc in enumerate(documents, start=1):
+        page_info = f", {doc.pages} pages" if doc.pages else ""
+        parts.append("")
+        parts.append(
+            f"--- DOCUMENT {i}: {doc.name} ({len(doc.text):,} chars{page_info}) ---"
+        )
+        parts.append(doc.text)
+    parts.append("")
+    return "\n".join(parts)
 
 
 def _build_agency_prompt(
     group: dict,
     core_project: str,
     instruction_set: dict,
-    document_context: str,
+    documents_block: str,
 ) -> str:
     """Build a prompt from instruction set agency instructions."""
     instructions = [i for i in group["instructions"] if i is not None]
@@ -97,11 +107,8 @@ def _build_agency_prompt(
                 prompt += f"- {q}\n"
         prompt += "\n"
 
-    if document_context:
-        prompt += (
-            f"\nUPLOADED DOCUMENT CONTEXT (use these details to inform your analysis):\n"
-            f"{document_context}\n"
-        )
+    if documents_block:
+        prompt += documents_block + "\n"
 
     prompt += """
 For each agency, answer the key questions and determine which permits are required.
@@ -129,6 +136,7 @@ async def run_reasoner(
     county_config: CountyConfig,
     city_config: CityConfig | None,
     emitter: SSEEmitter,
+    documents: list[Document] | None = None,
 ) -> dict:
     """Run parallel permit analysis across agency groups using instruction set."""
     client = _get_client()
@@ -160,11 +168,11 @@ async def run_reasoner(
     )
 
     groups = _get_agency_groups(instruction_set, city_config)
-    core_project, document_context = _split_document_context(project_description)
+    documents_block = _render_documents_block(documents or [])
 
     async def analyze_group(group: dict) -> dict:
         user_msg = _build_agency_prompt(
-            group, core_project, instruction_set, document_context
+            group, project_description, instruction_set, documents_block
         )
         emitter.emit_thought(AGENT_NAME, f"Analyzing {group['name']}...")
 

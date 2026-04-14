@@ -1,5 +1,7 @@
 import asyncio
+import json
 import os
+import sys
 
 import httpx
 
@@ -40,7 +42,15 @@ async def call_tool(
             last_error = e
             if attempt < max_retries - 1:
                 await asyncio.sleep(1.0 * (attempt + 1))
-        except httpx.HTTPStatusError:
+        except httpx.HTTPStatusError as e:
+            # Log the payload so we can diagnose param-name mismatches
+            print(
+                f"[rest_client] {e.response.status_code} on {endpoint}: "
+                f"payload={json.dumps(payload, default=str)[:500]} "
+                f"response={e.response.text[:300]}",
+                file=sys.stderr,
+                flush=True,
+            )
             raise  # Don't retry HTTP errors (4xx, 5xx)
 
     raise last_error or RuntimeError(f"Failed to call {endpoint} after {max_retries} retries")
